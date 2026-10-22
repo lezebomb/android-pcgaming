@@ -26,6 +26,7 @@ public class WindowManager extends XResourceManager {
     private final SparseArray<Window> windows = new SparseArray<>();
     public final DrawableManager drawableManager;
     private Window focusedWindow;
+    private boolean pointerRootFocus;
     private FocusRevertTo focusRevertTo = FocusRevertTo.NONE;
     private final ArrayList<OnWindowModificationListener> onWindowModificationListeners = new ArrayList<>();
 
@@ -120,7 +121,7 @@ public class WindowManager extends XResourceManager {
             Window parent = window.getParent();
             window.sendEvent(Event.STRUCTURE_NOTIFY, new UnmapNotify(window, window));
             parent.sendEvent(Event.SUBSTRUCTURE_NOTIFY, new UnmapNotify(parent, window));
-            if (window == focusedWindow) revertFocus();
+            if (window == focusedWindow || window.isAncestorOf(focusedWindow)) revertFocus();
             triggerOnUnmapWindow(window);
         }
     }
@@ -132,20 +133,33 @@ public class WindowManager extends XResourceManager {
     public void revertFocus() {
         switch (focusRevertTo) {
             case NONE:
-                focusedWindow = null;
+                setFocus(null, FocusRevertTo.NONE);
                 break;
             case POINTER_ROOT:
-                focusedWindow = rootWindow;
+                setPointerRootFocus(FocusRevertTo.POINTER_ROOT);
                 break;
             case PARENT:
-                if (focusedWindow.getParent() != null) focusedWindow = focusedWindow.getParent();
+                Window ancestor = focusedWindow != null ? focusedWindow.getParent() : null;
+                while (ancestor != null && ancestor.getMapState() != Window.MapState.VIEWABLE)
+                    ancestor = ancestor.getParent();
+                setFocus(ancestor, FocusRevertTo.NONE);
                 break;
         }
     }
 
     public void setFocus(Window focusedWindow, FocusRevertTo focusRevertTo) {
         this.focusedWindow = focusedWindow;
+        this.pointerRootFocus = false;
         this.focusRevertTo = focusRevertTo;
+    }
+
+    public void setPointerRootFocus(FocusRevertTo focusRevertTo) {
+        setFocus(rootWindow, focusRevertTo);
+        pointerRootFocus = true;
+    }
+
+    public int getFocusWindowId() {
+        return pointerRootFocus ? 1 : focusedWindow != null ? focusedWindow.id : 0;
     }
 
     public FocusRevertTo getFocusRevertTo() {

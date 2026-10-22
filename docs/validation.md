@@ -134,3 +134,9 @@ APK641479799bytes，SHA25611f1915a884a00eb8dcc34402d537754158eee7a2d8e15e9001823
 ARM64 Mali层、APK构建及v2验签通过；APK641480751bytes，SHA256579bc8bd713f74ba4c9aebe0bba57d0c51517e842c540a33f1f06a1e9180d1a6，保留数据更新安装成功。旧版原生断点准确定位Mali层device静态析构下的terminate；修正后不附加调试器的同一路径短查未再出现libc++abi终止。
 
 原免费GUI启动720p Low，引擎约80秒加载后记录Benchmark running，随即stopped/quit并返回启动器；最后截图为GUI，没有3D画面通过结论。没有重跑旧探针/全套手柄；不以running日志代替画面、帧率、可控或稳定性。
+
+### 0.1.47焦点请求修正及场景结果
+
+修正SetInputFocus把revert-to误当目标窗口的源码错误，实际目标0/1/window独立解析，保留PointerRoot特殊回包及祖先取消映射后的回退。依据[X11协议SetInputFocus](https://www.x.org/releases/X11R7.7/doc/xproto/x11protocol.html)。本改动尚未补齐全部FocusIn/Out及时间戳语义。
+
+APK构建/v2/保留数据安装通过；641480799bytes，SHA25675c22809574662ba7ac8c2b848f3be601ff288cdab430e56d51d2c8bf974fde2。同一Superposition低预设短查仍约90秒加载后立即stopped/quit；新增窗口记录确认引擎在退出前一直foreground=1，没有3D通过。不把协议错误修正宣称为退出根因或图形修复完成。

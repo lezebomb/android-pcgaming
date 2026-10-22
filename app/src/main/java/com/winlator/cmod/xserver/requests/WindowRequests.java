@@ -346,20 +346,25 @@ public abstract class WindowRequests {
     }
 
     public static void setInputFocus(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
-        WindowManager.FocusRevertTo focusRevertTo = WindowManager.FocusRevertTo.values()[client.getRequestData()];
+        int revertTo = Byte.toUnsignedInt(client.getRequestData());
+        if (revertTo >= WindowManager.FocusRevertTo.values().length) throw new BadValue(revertTo);
+        WindowManager.FocusRevertTo focusRevertTo = WindowManager.FocusRevertTo.values()[revertTo];
         int windowId = inputStream.readInt();
         inputStream.skip(4);
 
-        switch (focusRevertTo) {
-            case NONE:
+        // focus is independent of revert-to. In particular, RevertToNone with
+        // a real window must focus that window, not discard keyboard input.
+        switch (windowId) {
+            case 0:
                 client.xServer.windowManager.setFocus(null, focusRevertTo);
                 break;
-            case POINTER_ROOT:
-                client.xServer.windowManager.setFocus(client.xServer.windowManager.rootWindow, focusRevertTo);
+            case 1:
+                client.xServer.windowManager.setPointerRootFocus(focusRevertTo);
                 break;
-            case PARENT:
+            default:
                 Window window = client.xServer.windowManager.getWindow(windowId);
                 if (window == null) throw new BadWindow(windowId);
+                if (window.getMapState() != Window.MapState.VIEWABLE) throw new BadMatch();
                 client.xServer.windowManager.setFocus(window, focusRevertTo);
                 break;
         }
@@ -373,7 +378,7 @@ public abstract class WindowRequests {
             outputStream.writeByte((byte)client.xServer.windowManager.getFocusRevertTo().ordinal());
             outputStream.writeShort(client.getSequenceNumber());
             outputStream.writeInt(0);
-            outputStream.writeInt(focusedWindow != null ? focusedWindow.id : 0);
+            outputStream.writeInt(client.xServer.windowManager.getFocusWindowId());
             outputStream.writePad(20);
         }
     }

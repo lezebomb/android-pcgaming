@@ -2,7 +2,9 @@
 import fs from 'node:fs';
 import {execFileSync} from 'node:child_process';
 const adb=process.env.ADB??'D:/Collect/.tooling/android-sdk/platform-tools/adb.exe';
-const pkg='org.dimensity.gaming.dev',directory='artifacts/superposition/scene';
+const tag=process.env.DG_SCENE_TAG??'current';
+if(!/^[a-z0-9-]{1,32}$/.test(tag))throw Error('Invalid local observation tag.');
+const pkg='org.dimensity.gaming.dev',directory='artifacts/superposition/scene-'+tag;
 const call=(args,options={})=>execFileSync(adb,args,{timeout:15000,windowsHide:true,maxBuffer:24*1024*1024,...options});
 const uid=call(['shell','run-as',pkg,'id','-u'],{encoding:'utf8'}).trim();
 const rows=()=>call(['shell','ps','-A','-o','UID,PID,NAME'],{encoding:'utf8'}).split(/\r?\n/);
@@ -32,4 +34,5 @@ for(let sample=0;sample<27;sample++) {
 }
 fs.writeFileSync(directory+'/result.json',JSON.stringify({pid,result,lastPhase:previous,elapsedMs:Date.now()-started},null,2)+'\n');
 fs.writeFileSync(directory+'/wine-errors.log',read('files/diagnostics/wine-errors.log'));
+fs.writeFileSync(directory+'/windows.txt',read('files/imagefs/home/xuser-1/.wine/drive_c/DGSmoke/superposition-launch.txt'));
 console.log(result+'; screenshots and logs saved locally. No gameplay verdict inferred.');

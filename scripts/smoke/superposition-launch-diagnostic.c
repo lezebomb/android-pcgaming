@@ -4,6 +4,16 @@
 #include <string.h>
 static DWORD child_pid;
 static FILE *record;
+static BOOL CALLBACK focus_windows(HWND window, LPARAM unused) {
+    (void)unused;
+    if (!IsWindowVisible(window)) return TRUE;
+    DWORD pid=0; GetWindowThreadProcessId(window,&pid);
+    char title[256]={0},name[128]={0};
+    GetWindowTextA(window,title,sizeof(title));GetClassNameA(window,name,sizeof(name));
+    fprintf(record,"visible=%p pid=%lu foreground=%d title=%s class=%s\n",
+        window,(unsigned long)pid,window==GetForegroundWindow(),title,name);
+    return TRUE;
+}
 static BOOL CALLBACK windows(HWND window, LPARAM closing) {
     DWORD pid; GetWindowThreadProcessId(window, &pid);
     if (pid != child_pid || !IsWindowVisible(window)) return TRUE;
@@ -39,6 +49,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR command, int sh
         wait = WaitForSingleObject(child.hProcess, 1000);
         if (wait != WAIT_TIMEOUT) break;
         fprintf(record, "second=%u\n", second+1); EnumWindows(windows, 0); fflush(record);
+        if (second % 5 == 0) {EnumWindows(focus_windows,0);fflush(record);}
     }
     if (wait == WAIT_TIMEOUT) {
         fprintf(record, "gui_observed_interval_complete=1\n"); EnumWindows(windows, 1);
