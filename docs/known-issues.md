@@ -23,3 +23,5 @@
 18. Superposition曾通过显卡标识覆盖显示免费GUI并进入引擎启动画面；wrapper shader字节/字数越界已定位修复并做单样本回归。最近原库与修复库的GUI均黑屏，没有3D场景/FPS通过证据。见superposition-compatibility-2026-10-22.md。
 19. 0.1.28加入每游戏显式选择的Vortek实验后端：固定配套Bionic客户端/Android服务端、GPU专用AHB及完成后拷贝、私有ICD与socket。当前仅离线构建/v2验签通过，未安装实机；采用单缓冲、QueueWaitIdle与glFinish保守同步，不能声称性能改善。Vortek与现有Mali实验层分开选择，不能继承后者BC7/SM6通过结论。
 20. 0.1.29修复GL上下文重建后的资源编号失效：纹理/着色器与Uniform/VBO/后处理FBO按新上下文重新创建；失效旧ID不在新上下文误删。EGL import失败保留producer AHB并重试。离线APK构建/v2验签通过，前后台恢复仍需实际设备短查，不能称Qt黑屏或全部渲染故障已解决。
+
+21. 0.1.30修复Vortek内存标志选择、BC4偏移及BC1–5上传顺序、行距、层和Mip缓存。暂存内存上限256MiB；提交只等待服务端读取确认。BC6/7、GPU生成压缩数据、BC编码读回和块视图重解释尚未实现，保留真实核心功能声明；压缩读回明确失败以防缓冲越界。离线短查/构建/v2验签通过，平板未安装。

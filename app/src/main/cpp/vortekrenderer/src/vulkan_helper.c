@@ -2,6 +2,7 @@
 
 #include "vulkan_helper.h"
 #include "dma_utils.h"
+#include "dimensity_upload.h"
 
 #define VK_MAKE_VERSION_STR(s, v) sprintf(s, "%d.%d.%d", VK_VERSION_MAJOR(v), VK_VERSION_MINOR(v), VK_VERSION_PATCH(v))
 
@@ -143,11 +144,7 @@ void initVulkanDevice(VkContext* context, VkPhysicalDevice physicalDevice, VkDev
 }
 
 uint32_t getMemoryTypeIndex(uint32_t typeBits, VkFlags properties) {
-    for (uint32_t i = 0; i < deviceMemoryInfo.memoryTypeCount; i++) {
-        if ((typeBits & 1) && (deviceMemoryInfo.memoryTypes[i].propertyFlags & properties)) return i;
-        typeBits >>= 1;
-    }
-    return 0;
+    return dgSelectMemoryType(deviceMemoryInfo.memoryTypes, deviceMemoryInfo.memoryTypeCount, typeBits, properties);
 }
 
 uint32_t getMemoryPropertyFlags(uint32_t memoryTypeIndex) {
@@ -374,23 +371,28 @@ VkExtensionProperties* getExposedDeviceExtensionProperties(VkContext* context, V
 }
 
 void checkFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format, VkFormatProperties* formatProperties) {
-    if (isCompressedFormat(format) && formatProperties->linearTilingFeatures == 0 && formatProperties->optimalTilingFeatures == 0) {
-        vulkanWrapper.vkGetPhysicalDeviceFormatProperties(physicalDevice, DECOMPRESSED_FORMAT, formatProperties);
+    if (TextureDecoder_canDecompressFormat(format) && formatProperties->linearTilingFeatures == 0 && formatProperties->optimalTilingFeatures == 0) {
+        vulkanWrapper.vkGetPhysicalDeviceFormatProperties(physicalDevice, TextureDecoder_decodedFormat(format), formatProperties);
+        formatProperties->linearTilingFeatures = 0;
+        formatProperties->bufferFeatures = 0;
+        formatProperties->optimalTilingFeatures &= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+                VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT | VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
+                VK_FORMAT_FEATURE_TRANSFER_DST_BIT | VK_FORMAT_FEATURE_BLIT_SRC_BIT;
     }
     else if (isFormatScaled(format)) {
         formatProperties->bufferFeatures |= VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
     }
 }
 
-void checkImageFormatProperties(VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkImageFormatProperties* imageFormatProperties, VkResult* result) {
-    if (tiling == VK_IMAGE_TILING_LINEAR && type == VK_IMAGE_TYPE_2D && format == VK_FORMAT_R8G8B8A8_UNORM &&
-        usage == (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-        imageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_8_BIT;
-        *result = VK_SUCCESS;
-    }
-
-    if (*result == VK_ERROR_FORMAT_NOT_SUPPORTED && isCompressedFormat(format)) {
-        *result = getCompressedImageFormatProperties(format, imageFormatProperties);
+void checkImageFormatProperties(VkPhysicalDevice physicalDevice, VkFormat format, VkImageType type, VkImageTiling tiling, VkImageUsageFlags usage, VkImageCreateFlags flags, VkImageFormatProperties* imageFormatProperties, VkResult* result) {
+    VkImageUsageFlags supported = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    if (*result == VK_ERROR_FORMAT_NOT_SUPPORTED && TextureDecoder_canDecompressFormat(format) &&
+        type == VK_IMAGE_TYPE_2D && tiling == VK_IMAGE_TILING_OPTIMAL && !(usage & ~supported)) {
+        *result = vulkanWrapper.vkGetPhysicalDeviceImageFormatProperties(physicalDevice,
+                TextureDecoder_decodedFormat(format), type, tiling, usage,
+                (flags & ~VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) | VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT,
+                imageFormatProperties);
+        if (*result == VK_SUCCESS) imageFormatProperties->sampleCounts = VK_SAMPLE_COUNT_1_BIT;
     }
 }
 
@@ -429,27 +431,8 @@ void checkDeviceProperties(VkContext* context, VkPhysicalDeviceProperties* prope
 }
 
 void checkDeviceFeatures(VkPhysicalDeviceFeatures* features, void* pNext) {
-    features->textureCompressionBC = VK_TRUE;
-    features->depthClamp = VK_TRUE;
-    features->depthBiasClamp = VK_TRUE;
-    features->fillModeNonSolid = VK_TRUE;
-    features->sampleRateShading = VK_TRUE;
-    features->samplerAnisotropy = VK_TRUE;
-    features->shaderClipDistance = VK_TRUE;
-    features->shaderCullDistance = VK_TRUE;
-    features->occlusionQueryPrecise = VK_TRUE;
-    features->independentBlend = VK_TRUE;
-    features->multiViewport = VK_TRUE;
-    features->fullDrawIndexUint32 = VK_TRUE;
-    features->logicOp = VK_TRUE;
-    features->shaderImageGatherExtended = VK_TRUE;
-    features->variableMultisampleRate = VK_TRUE;
-    features->dualSrcBlend = VK_TRUE;
-    features->imageCubeArray = VK_TRUE;
-    features->drawIndirectFirstInstance = VK_TRUE;
-    features->fragmentStoresAndAtomics = VK_TRUE;
-    features->multiDrawIndirect = VK_TRUE;
-    features->tessellationShader = VK_TRUE;
+    // Preserve native core features. BC1-5 decoding is advertised per format;
+    // it does not establish full BC6/7, tessellation or other missing features.
 
     VkPhysicalDeviceMapMemoryPlacedFeaturesEXT* mapMemoryPlacedFeatures = findNextVkStructure(pNext, VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAP_MEMORY_PLACED_FEATURES_EXT);
     if (mapMemoryPlacedFeatures) {

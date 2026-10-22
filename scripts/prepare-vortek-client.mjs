@@ -63,6 +63,9 @@ fs.writeFileSync(`${root}/src/main.c`,main);
 // Surface handles carry the same X11 window id for Xlib and XCB; no new wire
 // opcode or foreign XCB implementation is needed on the Android host.
 let calls=fs.readFileSync(`${root}/src/vulkan_calls.c`,'utf8').replaceAll('\r\n','\n');
+const submitWait='bool shouldWait = RingBuffer_hasStatus(clientRing, RING_STATUS_WAIT);';
+if(calls.split(submitWait).length-1!==2)throw Error('Unexpected Vortek submit acknowledgement policy');
+calls=calls.replaceAll(submitWait,'bool shouldWait = true; // Paired Dimensity server acknowledges every submission.');
 const supportMarker='VkResult vt_call_vkGetPhysicalDeviceSurfaceSupportKHR(';
 if(!calls.includes(supportMarker))throw Error('Unexpected Vortek queue support entry');
 calls=calls.replace(supportMarker,`static VkBool32 vt_supportsPresentation(VkPhysicalDevice device, uint32_t family) {
@@ -134,7 +137,10 @@ fs.writeFileSync(`${out}/source-lock.json`,JSON.stringify({
   repository:'https://github.com/brunodev85/vortek',commit:'b1730c5def9b575672e671aee11d79ae7adc63d1',
   archiveSha256:expected,pairedWinlatorAppCommit:'a030f552f452158a2db64fdb32b490fa19c0b48d',
   changes:['Explicit Android guest-client build role','Session-owned socket from environment; no other app path',
-    'Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions'],
-  preparedSha256:{header:hash(header),main:hash(main),calls:hash(calls)},status:'offline build only; not installed or selected'
+    'Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions',
+    'Paired submission acknowledgements; request byte layouts unchanged'],
+  preparedSha256:{header:hash(header),main:hash(main),calls:hash(calls)},
+  protocol:'Dimensity paired submit-ack extension; do not mix with unmodified upstream server',
+  status:'optional per-game backend; offline build only, not validated on device'
 },null,2));
 console.log('Prepared pinned Android Vortek client; existing renderer unchanged.');

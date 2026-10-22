@@ -10,3 +10,13 @@ Local changes: JNI namespace for this app; system Mali Vulkan only; checked
 initialization; cache directory supplied by Android Context; bounded cache
 paths; error cleanup during AHB image creation. This backend is experimental
 and does not establish game compatibility. No system driver is installed.
+
+The paired client now waits for acknowledgement of every QueueSubmit/2;
+request serialization is unchanged, but the reply policy is a local protocol
+extension. Both halves must be used together. CPU BC1-5 uploads are recorded
+inside the original command buffer, retaining its barriers and ordering;
+staging lives until command reset/free, with a 256 MiB allocation limit.
+Padded rows, array layers, mip extents and cache sizes are checked. BC4 worker
+offsets and all-required memory property selection are corrected. Core device
+features remain native; this does not implement BC6/7, GPU-generated compressed
+uploads, BC encoding/readback, block-texel reinterpretation, or full BC support.

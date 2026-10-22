@@ -118,6 +118,7 @@ ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, VkM
         else {
             if ((getMemoryPropertyFlags(memoryInfo->memoryTypeIndex) & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)) {
                 memoryInfo->memoryTypeIndex = getMemoryTypeIndex(0x7FFFFFFF, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                if (memoryInfo->memoryTypeIndex == UINT32_MAX) goto error;
             }
 
             bool useExternalMemoryAHB = !hasExternalMemoryDMABuf;

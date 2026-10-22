@@ -32,6 +32,9 @@ static VkResult createImageMemory(VkDevice device, VkImage image, AHardwareBuffe
     memoryInfo.pNext = &memoryDedicatedInfo;
     memoryInfo.allocationSize = ahbProperties.allocationSize;
     memoryInfo.memoryTypeIndex = getMemoryTypeIndex(ahbProperties.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (memoryInfo.memoryTypeIndex == UINT32_MAX)
+        memoryInfo.memoryTypeIndex = getMemoryTypeIndex(ahbProperties.memoryTypeBits, 0);
+    if (memoryInfo.memoryTypeIndex == UINT32_MAX) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
     VkDeviceMemory memory;
     VkResult result = vulkanWrapper.vkAllocateMemory(device, &memoryInfo, NULL, &memory);

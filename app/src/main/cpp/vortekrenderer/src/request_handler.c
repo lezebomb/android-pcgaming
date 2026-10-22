@@ -5,6 +5,15 @@
 
 #define MSG_DEBUG_UNIMPLEMENTED_FUNC "%s not implemented yet\n"
 
+static bool checkTextureResult(VkContext* context, VkResult result) {
+    if (result == VK_SUCCESS) return true;
+    println("Vortek: texture/command operation failed: %d", result);
+    context->status = VK_ERROR_DEVICE_LOST;
+    RingBuffer_setStatus(context->serverRing, RING_STATUS_EXIT);
+    RingBuffer_setStatus(context->clientRing, RING_STATUS_EXIT);
+    return false;
+}
+
 void vt_handle_vkCreateInstance(VkContext* context) {
     VkInstanceCreateInfo createInfo = {0};
     vt_unserialize_vkCreateInstance(&createInfo, NULL, NULL, context->inputBuffer, &context->memoryPool);
@@ -145,7 +154,7 @@ void vt_handle_vkGetPhysicalDeviceImageFormatProperties(VkContext* context) {
 
     VkImageFormatProperties imageFormatProperties = {0};
     VkResult result = vulkanWrapper.vkGetPhysicalDeviceImageFormatProperties(physicalDevice, format, type, tiling, usage, flags, &imageFormatProperties);
-    checkImageFormatProperties(format, type, tiling, usage, flags, &imageFormatProperties, &result);
+    checkImageFormatProperties(physicalDevice, format, type, tiling, usage, flags, &imageFormatProperties, &result);
 
     VT_SERIALIZE_CMD(VkImageFormatProperties, &imageFormatProperties);
     vt_send(context->clientRing, result, outputBuffer, bufferSize);
@@ -178,6 +187,10 @@ void vt_handle_vkDestroyDevice(VkContext* context) {
     vt_unserialize_vkDestroyDevice((VkDevice)&deviceId, NULL, context->inputBuffer, &context->memoryPool);
     VkDevice device = VkObject_fromId(deviceId);
 
+    if (context->textureDecoder && context->textureDecoder->device == device) {
+        TextureDecoder_destroy(context->textureDecoder);
+        context->textureDecoder = NULL;
+    }
     vulkanWrapper.vkDestroyDevice(device, NULL);
 }
 
@@ -256,16 +269,20 @@ void vt_handle_vkQueueSubmit(VkContext* context) {
     VkSubmitInfo submits[submitCount];
     vt_unserialize_vkQueueSubmit(VK_NULL_HANDLE, NULL, submits, VK_NULL_HANDLE, context->inputBuffer, &context->memoryPool);
 
-    bool clientWaiting = RingBuffer_hasStatus(context->clientRing, RING_STATUS_WAIT);
+    bool decodedUploads = false;
     if (context->textureDecoder) {
-        TextureDecoder_decodeAll(context->textureDecoder);
-        if (clientWaiting && !(clientWaiting = false)) vt_send(context->clientRing, VK_SUCCESS, NULL, 0);
+        for (uint32_t i = 0; i < submitCount; i++)
+            for (uint32_t j = 0; j < submits[i].commandBufferCount; j++)
+                if (!checkTextureResult(context, TextureDecoder_decodeCommand(context->textureDecoder,
+                        submits[i].pCommandBuffers[j], &decodedUploads))) return;
     }
 
     VkResult result = vulkanWrapper.vkQueueSubmit(queue, submitCount, submits, fence);
+    // Acknowledgement protects CPU input lifetime, not GPU completion. Waiting
+    // idle here could prevent a later timeline signal/other-queue submission.
     if (result == VK_ERROR_DEVICE_LOST) context->status = result;
 
-    if (clientWaiting) vt_send(context->clientRing, result, NULL, 0);
+    vt_send(context->clientRing, result, NULL, 0);
 }
 
 void vt_handle_vkQueueWaitIdle(VkContext* context) {
@@ -310,6 +327,7 @@ void vt_handle_vkFreeMemory(VkContext* context) {
     VkDevice device = VkObject_fromId(deviceId);
     ResourceMemory* resourceMemory = VkObject_fromId(memoryId);
 
+    if (context->textureDecoder) TextureDecoder_forgetMemory(context->textureDecoder, resourceMemory);
     ResourceMemory_free(context, device, resourceMemory);
 }
 
@@ -829,8 +847,9 @@ void vt_handle_vkCreateImageView(VkContext* context) {
     vt_unserialize_vkCreateImageView((VkDevice)&deviceId, &createInfo, NULL, NULL, context->inputBuffer, &context->memoryPool);
     VkDevice device = VkObject_fromId(deviceId);
 
-    if (context->textureDecoder && TextureDecoder_isFormatSupported(context->textureDecoder, createInfo.format)) {
-        createInfo.format = DECOMPRESSED_FORMAT;
+    if (context->textureDecoder && TextureDecoder_containsImage(context->textureDecoder, createInfo.image)
+            && TextureDecoder_canDecompressFormat(createInfo.format)) {
+        createInfo.format = TextureDecoder_decodedFormat(createInfo.format);
     }
 
     VkImageView view;
@@ -1207,6 +1226,7 @@ void vt_handle_vkDestroyCommandPool(VkContext* context) {
     VkCommandPool commandPool = VkObject_fromId(commandPoolId);
 
     vulkanWrapper.vkDestroyCommandPool(device, commandPool, NULL);
+    if (context->textureDecoder) TextureDecoder_resetPool(context->textureDecoder, commandPool, true);
 }
 
 void vt_handle_vkResetCommandPool(VkContext* context) {
@@ -1218,7 +1238,9 @@ void vt_handle_vkResetCommandPool(VkContext* context) {
     VkDevice device = VkObject_fromId(deviceId);
     VkCommandPool commandPool = VkObject_fromId(commandPoolId);
 
-    vulkanWrapper.vkResetCommandPool(device, commandPool, flags);
+    VkResult result = vulkanWrapper.vkResetCommandPool(device, commandPool, flags);
+    if (!checkTextureResult(context, result)) return;
+    if (context->textureDecoder) TextureDecoder_resetPool(context->textureDecoder, commandPool, false);
 }
 
 void vt_handle_vkAllocateCommandBuffers(VkContext* context) {
@@ -1230,6 +1252,9 @@ void vt_handle_vkAllocateCommandBuffers(VkContext* context) {
 
     VkCommandBuffer commandBuffers[allocateInfo.commandBufferCount];
     VkResult result = vulkanWrapper.vkAllocateCommandBuffers(device, &allocateInfo, commandBuffers);
+    if (result == VK_SUCCESS && context->textureDecoder)
+        for (uint32_t i = 0; i < allocateInfo.commandBufferCount; i++)
+            TextureDecoder_registerCommand(context->textureDecoder, commandBuffers[i], allocateInfo.commandPool);
 
     VT_SERIALIZE_CMD(vkAllocateCommandBuffers, VK_NULL_HANDLE, &allocateInfo, commandBuffers);
     vt_send(context->clientRing, result, outputBuffer, bufferSize);
@@ -1248,6 +1273,9 @@ void vt_handle_vkFreeCommandBuffers(VkContext* context) {
     vt_unserialize_vkFreeCommandBuffers(VK_NULL_HANDLE, VK_NULL_HANDLE, NULL, commandBuffers, context->inputBuffer, &context->memoryPool);
 
     vulkanWrapper.vkFreeCommandBuffers(device, commandPool, commandBufferCount, commandBuffers);
+    if (context->textureDecoder)
+        for (uint32_t i = 0; i < commandBufferCount; i++)
+            TextureDecoder_resetCommand(context->textureDecoder, commandBuffers[i], true);
 }
 
 void vt_handle_vkBeginCommandBuffer(VkContext* context) {
@@ -1256,7 +1284,9 @@ void vt_handle_vkBeginCommandBuffer(VkContext* context) {
     vt_unserialize_vkBeginCommandBuffer((VkCommandBuffer)&commandBufferId, &beginInfo, context->inputBuffer, &context->memoryPool);
     VkCommandBuffer commandBuffer = VkObject_fromId(commandBufferId);
 
-    vulkanWrapper.vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    VkResult result = vulkanWrapper.vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    if (!checkTextureResult(context, result)) return;
+    if (context->textureDecoder) TextureDecoder_resetCommand(context->textureDecoder, commandBuffer, false);
 }
 
 void vt_handle_vkEndCommandBuffer(VkContext* context) {
@@ -1266,7 +1296,7 @@ void vt_handle_vkEndCommandBuffer(VkContext* context) {
     VkCommandBuffer commandBuffer = VkObject_fromId(commandBufferId);
     position += VK_HANDLE_BYTE_COUNT;
 
-    while (position < context->inputBufferSize) {
+    while (position < context->inputBufferSize && context->status >= 0) {
         int requestCode = *(int*)(inputBuffer + position + 0);
         int size = *(int*)(inputBuffer + position + 4);
 
@@ -1283,7 +1313,7 @@ void vt_handle_vkEndCommandBuffer(VkContext* context) {
         position += size + HEADER_SIZE;
     }
 
-    vulkanWrapper.vkEndCommandBuffer(commandBuffer);
+    if (context->status >= 0) checkTextureResult(context, vulkanWrapper.vkEndCommandBuffer(commandBuffer));
 }
 
 void vt_handle_vkResetCommandBuffer(VkContext* context) {
@@ -1293,7 +1323,9 @@ void vt_handle_vkResetCommandBuffer(VkContext* context) {
     vt_unserialize_vkResetCommandBuffer((VkCommandBuffer)&commandBufferId, &flags, context->inputBuffer, &context->memoryPool);
     VkCommandBuffer commandBuffer = VkObject_fromId(commandBufferId);
 
-    vulkanWrapper.vkResetCommandBuffer(commandBuffer, flags);
+    VkResult result = vulkanWrapper.vkResetCommandBuffer(commandBuffer, flags);
+    if (!checkTextureResult(context, result)) return;
+    if (context->textureDecoder) TextureDecoder_resetCommand(context->textureDecoder, commandBuffer, false);
 }
 
 void vt_handle_vkCmdBindPipeline(VkContext* context) {
@@ -1612,7 +1644,8 @@ void vt_handle_vkCmdCopyBufferToImage(VkContext* context) {
     vt_unserialize_vkCmdCopyBufferToImage(VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE, NULL, NULL, regions, context->inputBuffer, &context->memoryPool);
 
     if (context->textureDecoder && TextureDecoder_containsImage(context->textureDecoder, dstImage)) {
-        TextureDecoder_copyBufferToImage(context->textureDecoder, commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
+        checkTextureResult(context, TextureDecoder_copyBufferToImage(context->textureDecoder,
+                commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, regions));
     }
     else vulkanWrapper.vkCmdCopyBufferToImage(commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
 }
@@ -1632,6 +1665,12 @@ void vt_handle_vkCmdCopyImageToBuffer(VkContext* context) {
     VkBufferImageCopy regions[regionCount];
     vt_unserialize_vkCmdCopyImageToBuffer(VK_NULL_HANDLE, VK_NULL_HANDLE, NULL, VK_NULL_HANDLE, NULL, regions, context->inputBuffer, &context->memoryPool);
 
+    // RGBA image bytes cannot be copied into the guest's smaller BC buffer.
+    // Encoding readback to BC is unsupported; stop before issuing an unsafe copy.
+    if (context->textureDecoder && TextureDecoder_containsImage(context->textureDecoder, srcImage)) {
+        checkTextureResult(context, VK_ERROR_FORMAT_NOT_SUPPORTED);
+        return;
+    }
     vulkanWrapper.vkCmdCopyImageToBuffer(commandBuffer, srcImage, srcImageLayout, dstBuffer, regionCount, regions);
 }
 
@@ -1945,6 +1984,8 @@ void vt_handle_vkCmdExecuteCommands(VkContext* context) {
     vt_unserialize_vkCmdExecuteCommands(VK_NULL_HANDLE, NULL, commandBuffers, context->inputBuffer, &context->memoryPool);
 
     vulkanWrapper.vkCmdExecuteCommands(commandBuffer, commandBufferCount, commandBuffers);
+    if (context->textureDecoder) checkTextureResult(context,
+            TextureDecoder_linkCommands(context->textureDecoder, commandBuffer, commandBufferCount, commandBuffers));
 }
 
 void vt_handle_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkContext* context) {
@@ -2156,7 +2197,7 @@ void vt_handle_vkGetPhysicalDeviceImageFormatProperties2(VkContext* context) {
     VkPhysicalDevice physicalDevice = VkObject_fromId(physicalDeviceId);
 
     VkResult result = vulkanWrapper.vkGetPhysicalDeviceImageFormatProperties2(physicalDevice, &imageFormatInfo, &imageFormatProperties);
-    checkImageFormatProperties(imageFormatInfo.format, imageFormatInfo.type, imageFormatInfo.tiling, imageFormatInfo.usage, imageFormatInfo.flags, &imageFormatProperties.imageFormatProperties, &result);
+    checkImageFormatProperties(physicalDevice, imageFormatInfo.format, imageFormatInfo.type, imageFormatInfo.tiling, imageFormatInfo.usage, imageFormatInfo.flags, &imageFormatProperties.imageFormatProperties, &result);
 
     VT_SERIALIZE_CMD(VkImageFormatProperties2, &imageFormatProperties);
     vt_send(context->clientRing, result, outputBuffer, bufferSize);
@@ -3332,7 +3373,9 @@ void vt_handle_vkCmdCopyBufferToImage2(VkContext* context) {
     VkCommandBuffer commandBuffer = VkObject_fromId(commandBufferId);
 
     if (context->textureDecoder && TextureDecoder_containsImage(context->textureDecoder, copyBufferToImageInfo.dstImage)) {
-        TextureDecoder_copyBufferToImage2(context->textureDecoder, commandBuffer, copyBufferToImageInfo.srcBuffer, copyBufferToImageInfo.dstImage, copyBufferToImageInfo.dstImageLayout, &copyBufferToImageInfo);
+        checkTextureResult(context, TextureDecoder_copyBufferToImage2(context->textureDecoder,
+                commandBuffer, copyBufferToImageInfo.srcBuffer, copyBufferToImageInfo.dstImage,
+                copyBufferToImageInfo.dstImageLayout, &copyBufferToImageInfo));
     }
     else vulkanWrapper.vkCmdCopyBufferToImage2(commandBuffer, &copyBufferToImageInfo);
 }
@@ -3344,6 +3387,10 @@ void vt_handle_vkCmdCopyImageToBuffer2(VkContext* context) {
     vt_unserialize_vkCmdCopyImageToBuffer2((VkCommandBuffer)&commandBufferId, &copyImageToBufferInfo, context->inputBuffer, &context->memoryPool);
     VkCommandBuffer commandBuffer = VkObject_fromId(commandBufferId);
 
+    if (context->textureDecoder && TextureDecoder_containsImage(context->textureDecoder, copyImageToBufferInfo.srcImage)) {
+        checkTextureResult(context, VK_ERROR_FORMAT_NOT_SUPPORTED);
+        return;
+    }
     vulkanWrapper.vkCmdCopyImageToBuffer2(commandBuffer, &copyImageToBufferInfo);
 }
 
@@ -3427,19 +3474,19 @@ void vt_handle_vkQueueSubmit2(VkContext* context) {
     VkQueue queue = VkObject_fromId(queueId);
     VkFence fence = VkObject_fromId(fenceId);
 
-    bool clientWaiting = RingBuffer_hasStatus(context->clientRing, RING_STATUS_WAIT);
-    if (context->textureDecoder) {
-        TextureDecoder_decodeAll(context->textureDecoder);
-        if (clientWaiting && !(clientWaiting = false)) vt_send(context->clientRing, VK_SUCCESS, NULL, 0);
-    }
-
     VkSubmitInfo2 submits[submitCount];
     vt_unserialize_vkQueueSubmit2(VK_NULL_HANDLE, NULL, submits, VK_NULL_HANDLE, context->inputBuffer, &context->memoryPool);
+    bool decodedUploads = false;
+    if (context->textureDecoder)
+        for (uint32_t i = 0; i < submitCount; i++)
+            for (uint32_t j = 0; j < submits[i].commandBufferInfoCount; j++)
+                if (!checkTextureResult(context, TextureDecoder_decodeCommand(context->textureDecoder,
+                        submits[i].pCommandBufferInfos[j].commandBuffer, &decodedUploads))) return;
 
     VkResult result = vulkanWrapper.vkQueueSubmit2(queue, submitCount, submits, fence);
     if (result == VK_ERROR_DEVICE_LOST) context->status = result;
 
-    if (clientWaiting) vt_send(context->clientRing, result, NULL, 0);
+    vt_send(context->clientRing, result, NULL, 0);
 }
 
 void vt_handle_vkCmdWriteTimestamp2(VkContext* context) {

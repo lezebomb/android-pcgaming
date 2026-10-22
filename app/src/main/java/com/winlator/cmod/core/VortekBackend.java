@@ -22,7 +22,7 @@ import java.util.ArrayList;
 public final class VortekBackend {
     public static final String EXTRA = "vulkanBackend";
     public static final String NAME = "vortek";
-    private static final String HASH = "65c209f16369077e1d3d95c82dc96471b5d20914ae4a206e74436efafc2a18e9";
+    private static final String HASH = "fed0760809cccd752e7f466890307c7eb48d9e3c4f6e92b3ca3a3650d9f6a1a6";
     private static final String LIBRARY = "usr/lib/libvulkan_vortek.so";
     private static final String MANIFEST = "usr/share/vulkan/icd.d/dimensity_vortek.json";
     private static final String SOCKET = "/usr/tmp/.vortek/V0";

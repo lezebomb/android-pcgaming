@@ -199,7 +199,7 @@ static inline void BCDecoder_decode(const uint8_t* src, uint8_t* dst, int width,
     const int stride = width * 4;
     const int dy = stride * BC_BLOCK;
     const int skipWidth = BC_ROUNDUP(width) / BC_BLOCK;
-    const int blockSize = bcN == 1 ? 8 : 16;
+    const int blockSize = (bcN == 1 || bcN == 4) ? 8 : 16;
 
     int minTasks = height >= 256 ? BC_DECODER_MAX_TASKS : BC_DECODER_MAX_TASKS / 2;
     int numTasks = threadPool && height >= 128 ? MIN(minTasks, threadPool->numThreads) : 1;
