@@ -73,6 +73,14 @@ public final class DirectLaunchDialog {
         identityScope.setEnabled(adapterIdentity.isChecked());
         adapterIdentity.setOnCheckedChangeListener((button, checked) -> identityScope.setEnabled(checked));
         fields.addView(identityScope);
+        CheckBox legacyQuery = new CheckBox(context);
+        legacyQuery.setText("避开旧式显卡检测崩溃（DXVK）");
+        legacyQuery.setChecked(shortcut != null && com.winlator.cmod.dimensity.LegacyGraphicsQuery.GDI
+                .equals(shortcut.getExtra(com.winlator.cmod.dimensity.LegacyGraphicsQuery.EXTRA)));
+        fields.addView(legacyQuery);
+        TextView legacyHint = new TextView(context);
+        legacyHint.setText("辅助检测使用 GDI，游戏 3D 仍由 DXVK 处理。需要旧版 DirectDraw 的程序请关闭；自定义 renderer 设置优先。");
+        fields.addView(legacyHint);
         CheckBox vortek = new CheckBox(context);
         vortek.setText("实验性 Mali 显示后端（Vortek）");
         vortek.setChecked(com.winlator.cmod.core.VortekBackend.selected(shortcut));
@@ -121,6 +129,8 @@ public final class DirectLaunchDialog {
                         : com.winlator.cmod.dimensity.AdapterIdentity.NVIDIA) : null);
                 result.putExtra(com.winlator.cmod.core.VortekBackend.EXTRA, vortek.isChecked()
                         ? com.winlator.cmod.core.VortekBackend.NAME : null);
+                result.putExtra(com.winlator.cmod.dimensity.LegacyGraphicsQuery.EXTRA, legacyQuery.isChecked()
+                        ? com.winlator.cmod.dimensity.LegacyGraphicsQuery.GDI : null);
                 result.saveData();
                 GameLaunches.setAutomatic(context, result, automatic.isChecked());
                 dialog.dismiss();

@@ -2,7 +2,9 @@
 
 面向天玑 8300 / Mali-G615 / 8GB 平板的本地 Windows 游戏运行器开发版。以实际审计过的 WinlatorMali 为基础，独立包名 `org.dimensity.gaming.dev`，无需 Root。
 
-已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及手柄短测。当前已安装0.1.50-dev。Warzone在原wrapper + 游戏DirectX/ANGLE路线已实际显示第一关地形、车辆与HUD；0.1.48的虚拟手柄检查确认7个单位由初始位置移动到目标点。战斗、长时间稳定性与经校准的帧时间仍待验收。Superposition已显示完整GUI，但引擎仍主动退出；艾尔登法环原版EXE停在客户端接口初始化，尚未达到3A流畅稳定游玩的目标。
+已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及手柄短测。当前已安装0.1.51-dev。Warzone在原wrapper + 游戏DirectX/ANGLE路线已实际显示第一关地形、车辆与HUD；0.1.48的虚拟手柄检查确认7个单位由初始位置移动到目标点。战斗、长时间稳定性与经校准的帧时间仍待验收。Superposition已显示完整GUI，但引擎仍主动退出；艾尔登法环原版EXE停在客户端接口初始化，尚未达到3A流畅稳定游玩的目标。
+
+FF14官方免费测试程序在0.1.50的对应配置下已实际显示角色编辑器、户外地形建筑和人物材质，菜单点击有效；采样约9–20FPS，不能视作流畅稳定或正式游戏可玩。0.1.51将避开Wine旧式显卡查询崩溃的配置做成可选开关，详见[大型DX11样本记录](docs/ffxiv-benchmark-compatibility.md)。
 
 最近修复了Mali层退出清理、X11焦点请求/通知、鼠标状态字段与松开投递。代码构建、一次新增协议短查、真实游戏结果分别记录于[验证记录](docs/validation.md)。实验Vortek缺少游戏要求的coherent上传类型，当前不能替代wrapper，早期3D结果不视作新版回归通过。
 

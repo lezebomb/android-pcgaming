@@ -1513,6 +1513,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         if (shortcut != null && dxwrapper.contains("dxvk")) {
+            com.winlator.cmod.dimensity.LegacyGraphicsQuery.configure(envVars,
+                    shortcut.getExtra(com.winlator.cmod.dimensity.LegacyGraphicsQuery.EXTRA));
             com.winlator.cmod.dimensity.AdapterIdentity.configure(envVars,
                     shortcut.getExtra(com.winlator.cmod.dimensity.AdapterIdentity.EXTRA),
                     shortcut.getExtra("executablePath", shortcut.path));
