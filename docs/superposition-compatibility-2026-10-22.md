@@ -40,3 +40,9 @@ dxgi.hideNvidiaGpu = False
 **实际平板单样本A/B已通过**：同一104736字节着色器末尾紧邻不可读保护页，直接调用固定库中的原函数。原库SIGSEGV；副本正常返回，全部输入字节未变。`artifacts/wrapper-bounds/guard-result.txt`，`bounds_result=0`。这是解析越界回归检查，不创建Vulkan设备，不作为场景/FPS通过。
 
 0.1.26候选仅在G615实验性Mali兼容已开启时安装并选择独立ICD；原驱动完整保留，未知驱动构建不打补丁，关闭实验选项恢复原ICD。下一步只做一次必要场景短复查。
+
+## 23日GUI与退出栈
+
+0.1.45的原wrapper+Sarek1.14.1路径已在同机完整显示原版免费GUI，选择720p Low后进入UNIGINE加载。与旧版Vortek黑屏结果分开记录。一次原生断点抓到`abort → terminate → device::~device → __cxa_finalize → exit`，是兼容层在进程退出时析构未join的后台线程。引擎日志先记录Benchmark running、约一秒后stopped、quit及Shutdown；没有真实场景截图，不能据此宣称跑分或3D通过。
+
+0.1.46修正该清理生命周期，保留正常显式设备销毁。`capture-superposition-abort.mjs`仅附加本应用已经启动的引擎，先选择remote-android/AArch64并加载设备实际libc，放行FEX正常使用的SIGBUS/SIGSYS/SIGUSR等信号；断点地址由该进程映射及实际符号计算，结束后移除forward并恢复自身引擎。`observe-superposition-scene.mjs`在不附加调试器的情况下限时保存阶段日志与本地截图，不自动重跑，也不根据running字样给出画面通过结论。

@@ -128,3 +128,9 @@ APK641479799bytes，SHA25611f1915a884a00eb8dcc34402d537754158eee7a2d8e15e9001823
 原生定点进一步确认：RARELY CPU用途仍只支持type1；AHB原fd作为DMA-BUF查询仍typeBits0x2；OPAQUE_FD buffer features=0，DMA_BUF features=IMPORTABLE(0x4)，没有已证实的可导出coherent通道。没有伪造HOST_COHERENT或安装系统驱动。
 
 同一版本改用原wrapper+Sarek1.14.1，实际Superposition GUI文字/图片/控件完整显示，Android输入已在GUI中选择720p Low并点击RUN，原版superposition.exe已显示UNIGINE启动图和LOADING画面；这些不是3D场景或性能验收。观测助手默认30秒，显式--observe-gui允许最多5分钟GUI操作，不代替引擎稳定性测试。
+
+### 0.1.46实机退出清理修正
+
+ARM64 Mali层、APK构建及v2验签通过；APK641480751bytes，SHA256579bc8bd713f74ba4c9aebe0bba57d0c51517e842c540a33f1f06a1e9180d1a6，保留数据更新安装成功。旧版原生断点准确定位Mali层device静态析构下的terminate；修正后不附加调试器的同一路径短查未再出现libc++abi终止。
+
+原免费GUI启动720p Low，引擎约80秒加载后记录Benchmark running，随即stopped/quit并返回启动器；最后截图为GUI，没有3D画面通过结论。没有重跑旧探针/全套手柄；不以running日志代替画面、帧率、可控或稳定性。

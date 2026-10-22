@@ -46,3 +46,11 @@ D:/nodejs/node.exe scripts/prepare-mali-compat.mjs
 缓冲区预算原先按内存需求大小扣除、按请求大小返还，对有差额的分配会累积预算占用；现在另存committedSize并按相同数额返还。缓冲区构建未注册到全局表前调用底层绑定，避免自身查找错误；缓冲区/图像的底层绑定失败现清理内存、资源、预算并返回真实错误。
 
 仅一次针对新路径的实际检查通过：64次创建/释放，4096字节预算填满1024个4字节存活分配后返回VK_ERROR_OUT_OF_DEVICE_MEMORY，全部释放后再分配成功，超额8192字节也被拒绝。`artifacts/mali-compat/vulkan-sparse-budget.txt`与sparse-wine.log。本机该缓冲区req.size=4、alignment=64，没有padding差额，明确记录padding_regression_case_available=0；未声称实机重现或A/B验证了padding泄漏，也未故意制造底层BindMemory失败。预算仅该模拟层的分配记账，不是全部GPU实际驻留或整个游戏内存上限。
+
+## 23日设备退出生命周期修正
+
+原wrapper+Sarek1.14.1已经实际显示Superposition GUI。一次原生abort断点定位到兼容层`device::~device()`，其调用方是进程退出的`__cxa_finalize`。引擎自身日志在此前已记录Benchmark停止及Shutdown；因此这次abort是退出清理的第二个问题，不能将它当作加载失败或Mali驱动崩溃的根因。
+
+0.1.46令设备注册表与线程等待锁保持到原生进程结束，避免游戏遗留的Vulkan设备在静态析构时销毁仍joinable的线程。正常`vkDestroyDevice`仍释放设备资源；现在在驱动释放句柄前保存dispatch key，以持有的shared_ptr完成清理，并在等待线程使用的同一把锁下改变停止条件，避免丢失唤醒。这个改动不增加或伪造GPU功能。
+
+固定上游blob仍由补丁脚本核对，构建锁记录五个本地修改文件。新ARM64库SHA256为`f023a7820abcde1af21e7fc8de1e3ca0d77682e66d93af048a136873a6e9c79d`。已完成ARM64/APK构建与v2验签，真实场景另行记录；退出安全修正不能代替3D与稳定性验收。

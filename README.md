@@ -4,7 +4,7 @@
 
 已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及虚拟手柄短测。Warzone2100 已进入第一关 3D 地形、车辆与 HUD，手柄映射实际选中7个单位；移动、战斗与稳定性仍未验收。Mali 实验层已执行 SM6 绘制和 BC1/3/5/7 采样，固定 wrapper 的着色器边界修复通过单样本实机回归。平板已安装0.1.45-dev；0.1.34的可选Vortek后端在实机Warzone第一关显示地形、车辆和HUD，并通过虚拟手柄选取7单位；完整移动、战斗、性能与稳定性仍待验收。已修正AHB格式/用途、多缓冲及Fence等待，保留默认wrapper回退。Superposition仍有黑屏，艾尔登法环原版EXE停在客户端接口初始化；尚未达到3A游戏流畅稳定游玩的目标。
 
-0.1.45已构建并安装：修正Sarek打包并验证APK内原包摘要；现有wrapper配合Sarek1.14.1已实际显示Superposition完整GUI并可操作低画质预设，3D场景和性能仍待验证。实验Vortek的跨进程内存类型已按驱动实查收紧，但缺少游戏要求的coherent上传类型，当前不能替代wrapper，也未解决其游戏黑屏。
+0.1.46已构建并安装：wrapper配合Sarek1.14.1已实际显示Superposition完整GUI；修正Mali层退出时的后台线程析构终止，对应短测未再出现该abort。引擎仍在记录Benchmark开始后立即停止，未取得3D场景或性能通过证据。实验Vortek缺少游戏要求的coherent上传类型，当前不能替代wrapper，也未解决其游戏黑屏。
 
 ## 使用
 

@@ -275,9 +275,19 @@
   ],
   "localPatches": [
     {
-      "name": "sparse-allocation-and-opt-in-shader-capture",
-      "scriptSha256": "f6775222fca4ed3419cbcfa1d8a6e37672a637835d687db6d74849f077440c60",
+      "name": "sparse-allocation-shader-capture-and-device-lifetime",
+      "scriptSha256": "ae39b6ee6cda0a2f2d68fc5c2fa6baad4f2431a2ebcb4f91e1774c39c5c30757",
       "files": [
+        {
+          "path": "src/layer.hpp",
+          "upstreamGitBlob": "c99d3221a5465b46cc12e9e3529270630c745656",
+          "patchedSha256": "10cf49a36d11aeea29126a71e4d7d4c870992adb62f35a0dc37eb9b755c08cef"
+        },
+        {
+          "path": "src/layer.cpp",
+          "upstreamGitBlob": "6fde543cdec747ac57e81f8a26d560a9e919d4ff",
+          "patchedSha256": "54a2067fb0d02d15a5c85eaacf15f1106c34e2ebbaec6c497a801f946abc7ba7"
+        },
         {
           "path": "src/pipelines.cpp",
           "upstreamGitBlob": "88f3c01545c3b81b16846462710142c6fc0986bc",

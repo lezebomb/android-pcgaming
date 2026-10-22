@@ -20,7 +20,7 @@
 
 16. 0.1.18已有前台库页面接收新外部入口的实际参数/工作目录通过证据。调试更新同名EXE后热续启仍偶有无新日志，冷启可运行，根因待定位，Wine exit0不算游戏成功。
 17. 手柄组合写入与失焦归零/返回新输入已通过必要短查，早前恢复失败定位为系统Settings ANR抢焦点。0.1.23–24新增通用键鼠映射、按游戏保存、设备描述符重连匹配及延迟触屏点击取消；真实游戏的完整手柄游玩仍未验收。
-18. Superposition曾通过显卡标识覆盖显示免费GUI并进入引擎启动画面；wrapper shader字节/字数越界已定位修复并做单样本回归。最近原库与修复库的GUI均黑屏，没有3D场景/FPS通过证据。见superposition-compatibility-2026-10-22.md。
+18. Superposition在0.1.45–46的wrapper+Sarek1.14.1路径已实际显示免费GUI和引擎加载。0.1.46针对已捕获的设备静态析构终止修正后，对应短查未再出现abort；但引擎仍在Benchmark开始后立即停止，没有3D场景/FPS通过证据。见superposition-compatibility-2026-10-22.md。
 19. 0.1.28加入每游戏显式选择的Vortek实验后端：固定配套Bionic客户端/Android服务端、GPU专用AHB及完成后拷贝、私有ICD与socket。当前仅离线构建/v2验签通过，未安装实机；采用单缓冲、QueueWaitIdle与glFinish保守同步，不能声称性能改善。Vortek与现有Mali实验层分开选择，不能继承后者BC7/SM6通过结论。
 20. 0.1.29修复GL上下文重建后的资源编号失效：纹理/着色器与Uniform/VBO/后处理FBO按新上下文重新创建；失效旧ID不在新上下文误删。EGL import失败保留producer AHB并重试。离线APK构建/v2验签通过，前后台恢复仍需实际设备短查，不能称Qt黑屏或全部渲染故障已解决。
 

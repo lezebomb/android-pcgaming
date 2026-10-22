@@ -243,8 +243,8 @@
     },
     {
       "path": "app/src/main/assets/mali_compat/libdxvk_mali_compat_layer.so",
-      "size": 16825168,
-      "sha256": "6806dc2c1d664eb1209ca14d003472d3a2bd2cc6acbc842913daa9b001616df3",
+      "size": 16822648,
+      "sha256": "f023a7820abcde1af21e7fc8de1e3ca0d77682e66d93af048a136873a6e9c79d",
       "kind": "build",
       "script": "scripts/build-mali-compat.ps1"
     },

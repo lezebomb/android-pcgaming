@@ -4,6 +4,46 @@ import crypto from 'node:crypto';
 const root = '.tooling/mali-compat-source';
 const lock = JSON.parse(fs.readFileSync(`${root}/dimensity-source-lock.json`, 'utf8'));
 const edits = {
+  'src/layer.hpp': [
+    ['extern std::mutex global_lock;', 'extern std::mutex &global_lock;'],
+  ],
+  'src/layer.cpp': [
+    ['std::unordered_map<void *, std::shared_ptr<struct device>> deviceMap;',
+     `// A game may exit with live Vulkan devices. Static destruction of a
+// joinable finalizer thread calls std::terminate before the OS reclaims it.
+// Keep the registry for the native process lifetime; DestroyDevice still
+// releases each normally destroyed device and its driver resources.
+auto &deviceMap = *new std::unordered_map<void *, std::shared_ptr<struct device>>;`],
+    ['std::mutex global_lock;',
+     '// Finalizers and the process-lifetime registry share this lifetime.\nstd::mutex &global_lock = *new std::mutex;'],
+    [`    struct device *dev;
+    {
+        scoped_lock l(global_lock);
+        dev = get_device(device);
+        if (!dev)
+            return;
+    }
+
+    dev->stop_thread = true;
+    dev->hasCleanupWork.notify_all();`,
+     `    // The dispatch key must be read before the driver frees the handle.
+    void *key = GetKey(device);
+    std::shared_ptr<struct device> owner;
+    {
+        scoped_lock l(global_lock);
+        auto it = deviceMap.find(key);
+        if (it == deviceMap.end())
+            return;
+        owner = it->second;
+        // Change the wait predicate under the same mutex as FinalizerThread,
+        // otherwise a notification can be lost between its check and wait.
+        owner->stop_thread = true;
+    }
+    auto *dev = owner.get();
+    dev->hasCleanupWork.notify_all();`],
+    ['    deviceMap.erase(GetKey(device));',
+     '    scoped_lock l(global_lock);\n    deviceMap.erase(key);'],
+  ],
   'src/pipelines.cpp': [
     ['#include <cstdint>', '#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n#include <unistd.h>'],
     ['void DumpDisassembledSpirv(', `// Opt-in last input per native thread, saved before driver code can fault.
@@ -77,7 +117,7 @@ for (const [file, changes] of Object.entries(edits)) {
   if (patched !== current) fs.writeFileSync(`${root}/${file}`, patched);
   modified.push({path:file, upstreamGitBlob:entry.sha, patchedSha256:sha256(patched)});
 }
-const manifest = {...lock, localPatches:[{name:'sparse-allocation-and-opt-in-shader-capture',
+const manifest = {...lock, localPatches:[{name:'sparse-allocation-shader-capture-and-device-lifetime',
   scriptSha256:sha256(fs.readFileSync('scripts/patch-mali-compat.mjs')), files:modified}]};
 fs.writeFileSync(`${root}/dimensity-patched-source-lock.json`, JSON.stringify(manifest, null, 2)+'\n');
-console.log(`Verified local sparse fixes and opt-in shader capture: ${modified.length} source files.`);
+console.log(`Verified local sparse, shader capture and device lifetime fixes: ${modified.length} source files.`);

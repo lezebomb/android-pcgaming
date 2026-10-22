@@ -16,7 +16,7 @@ import java.security.MessageDigest;
 /** Optional application-private layer. Feature claims do not establish game compatibility. */
 public final class MaliCompatLayer {
     public static final String NAME = "VK_LAYER_COMPAT_DxvkMaliCompatLayer";
-    private static final String HASH = "6806dc2c1d664eb1209ca14d003472d3a2bd2cc6acbc842913daa9b001616df3";
+    private static final String HASH = "f023a7820abcde1af21e7fc8de1e3ca0d77682e66d93af048a136873a6e9c79d";
 
     private MaliCompatLayer() {}
 
