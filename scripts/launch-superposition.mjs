@@ -11,6 +11,10 @@ if (process.argv.includes('--sarek') && process.argv.includes('--legacy-dxvk')) 
 if (diagnostic && engine) throw new Error('Choose launcher diagnosis or the normal engine EXE.');
 const executable = diagnostic ? 'C:/DGSmoke/DG-SuperpositionLaunch.exe' : engine ? 'C:/Games/DGSuperposition/bin/superposition.exe' : 'C:/Games/DGSuperposition/Superposition.exe';
 let desktop = `[Desktop Entry]\nType=Application\nName=Superposition\nExec=wine ${executable}\n[Extra Data]\ncontainer_id=1\nexecutablePath=${executable}\nworkingDirectory=C:/Games/DGSuperposition\nscreenSize=1280x800\ndxwrapper=dxvk\ndxwrapperConfig=version=v2.3.1-stripped,framerate=30,async=0,asyncCache=0,vkd3dVersion=2.14.1,vkd3dLevel=auto,maliCompat=1,ddrawrapper=none,dxvkConfig=1\nenvVars=WINEDEBUG=-all QV4_FORCE_INTERPRETER=1 QT_QUICK_BACKEND=software QSG_RENDER_LOOP=basic DXVK_LOG_LEVEL=info DXVK_LOG_PATH=C:/Games/DGSuperposition\n`;
+if (process.argv.includes('--observe-gui')) {
+  if (!diagnostic) throw new Error('--observe-gui requires the bounded launcher helper.');
+  desktop += 'execArgs=--observe-gui\n';
+}
 desktop += 'adapterIdentity=nvidia\ncontrolsProfile=0\nsimTouchScreen=1\n';
 if (process.argv.includes('--vortek')) desktop += 'vulkanBackend=vortek\n';
 if (process.argv.includes('--legacy-dxvk')) desktop=desktop.replace('version=v2.3.1-stripped,', 'version=1.10.3,');

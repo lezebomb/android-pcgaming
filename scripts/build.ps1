@@ -47,6 +47,20 @@ $appVersion = [regex]::Match([IO.File]::ReadAllText((Join-Path $projectRoot 'app
 if ($appVersion -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') { throw 'Cannot determine a safe APK version from app/build.gradle.' }
 $apk = Join-Path $projectRoot ("artifacts\DimensityGaming-{0}.apk" -f $appVersion)
 Copy-Item -LiteralPath 'app\build\outputs\apk\debug\app-debug.apk' -Destination $apk -Force
+# aapt expands .gz assets and removes the suffix. Verify the actual installed
+# asset name and upstream bytes, not only the source file before packaging.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$dgArchiveLock = Get-Content -LiteralPath 'app/src/main/assets/dxwrapper/sarek-source-lock.json' -Raw | ConvertFrom-Json
+$dgZip = [IO.Compression.ZipFile]::OpenRead($apk)
+try {
+    $dgEntry = $dgZip.GetEntry('assets/dxwrapper/dxvk-1.14.1-sarek.tgz')
+    if (!$dgEntry -or $dgEntry.Length -ne $dgArchiveLock.size) { throw 'Sarek asset missing or renamed in final APK.' }
+    $dgStream = $dgEntry.Open()
+    $dgDigest = [Security.Cryptography.SHA256]::Create()
+    try { $dgAssetHash = ([BitConverter]::ToString($dgDigest.ComputeHash($dgStream))).Replace('-','').ToLowerInvariant() }
+    finally { $dgStream.Dispose(); $dgDigest.Dispose() }
+    if ($dgAssetHash -ne $dgArchiveLock.archiveSha256) { throw 'Sarek asset was transformed during packaging.' }
+} finally { $dgZip.Dispose() }
 $hash = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash.ToLowerInvariant()
 [IO.File]::WriteAllText($apk + '.sha256', $hash + '  ' + [IO.Path]::GetFileName($apk) + "`n")
 Get-Item -LiteralPath $apk | Select-Object FullName,Length

@@ -123,7 +123,8 @@ ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, con
     if (!resource) { result = VK_ERROR_OUT_OF_HOST_MEMORY; goto failed; }
     resource->fd = -1;
     resource->device = device;
-    if (!isHostVisibleMemory(info->memoryTypeIndex)) result = allocateNative(context, device, info, resource);
+    if (!(context->hostVisibleMemoryTypes & (1u << info->memoryTypeIndex)))
+        result = allocateNative(context, device, info, resource);
     else {
         bool opaque = context->hasExternalMemoryFd;
         bool dma = context->hasExternalMemoryDMABuf;

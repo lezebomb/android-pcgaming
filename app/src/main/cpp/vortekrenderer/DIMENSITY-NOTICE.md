@@ -68,3 +68,9 @@ Recoverable surface errors remain per-swapchain, including all-rejected batches
 whose semaphore waits must still execute. Allocation failure before submission
 leaves acquired images and semaphore payloads unchanged; completion failure
 after submission ends the device session to prevent unsafe buffer reuse.
+
+DMA/AHB guest HOST_VISIBLE flags now follow queried import memoryTypeBits
+before the game selects an index. Non-shareable types keep native GPU-only
+allocation. Temporary-device functions stay local; native dispatch is not
+replaced. This does not synthesize HOST_COHERENT: applications requiring a
+coherent staging type currently fail on the tested Mali transport.

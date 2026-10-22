@@ -1,6 +1,7 @@
 // Observe the official free GUI launcher as our own child. No engine CLI or binary patch.
 #include <windows.h>
 #include <stdio.h>
+#include <string.h>
 static DWORD child_pid;
 static FILE *record;
 static BOOL CALLBACK windows(HWND window, LPARAM closing) {
@@ -33,7 +34,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR command, int sh
     child_pid = child.dwProcessId;
     fprintf(record, "child_pid=%lu\n", (unsigned long)child_pid); fflush(record);
     DWORD wait = WAIT_TIMEOUT;
-    for (UINT second=0; second<30; second++) {
+    UINT observeSeconds = strstr(command, "--observe-gui") ? 300 : 30;
+    for (UINT second=0; second<observeSeconds; second++) {
         wait = WaitForSingleObject(child.hProcess, 1000);
         if (wait != WAIT_TIMEOUT) break;
         fprintf(record, "second=%u\n", second+1); EnumWindows(windows, 0); fflush(record);

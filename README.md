@@ -2,9 +2,9 @@
 
 面向天玑 8300 / Mali-G615 / 8GB 平板的本地 Windows 游戏运行器开发版。以实际审计过的 WinlatorMali 为基础，独立包名 `org.dimensity.gaming.dev`，无需 Root。
 
-已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及虚拟手柄短测。Warzone2100 已进入第一关 3D 地形、车辆与 HUD，手柄映射实际选中7个单位；移动、战斗与稳定性仍未验收。Mali 实验层已执行 SM6 绘制和 BC1/3/5/7 采样，固定 wrapper 的着色器边界修复通过单样本实机回归。平板已安装0.1.43-dev；0.1.34的可选Vortek后端在实机Warzone第一关显示地形、车辆和HUD，并通过虚拟手柄选取7单位；完整移动、战斗、性能与稳定性仍待验收。已修正AHB格式/用途、多缓冲及Fence等待，保留默认wrapper回退。Superposition仍有黑屏，艾尔登法环原版EXE停在客户端接口初始化；尚未达到3A游戏流畅稳定游玩的目标。
+已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及虚拟手柄短测。Warzone2100 已进入第一关 3D 地形、车辆与 HUD，手柄映射实际选中7个单位；移动、战斗与稳定性仍未验收。Mali 实验层已执行 SM6 绘制和 BC1/3/5/7 采样，固定 wrapper 的着色器边界修复通过单样本实机回归。平板已安装0.1.45-dev；0.1.34的可选Vortek后端在实机Warzone第一关显示地形、车辆和HUD，并通过虚拟手柄选取7单位；完整移动、战斗、性能与稳定性仍待验收。已修正AHB格式/用途、多缓冲及Fence等待，保留默认wrapper回退。Superposition仍有黑屏，艾尔登法环原版EXE停在客户端接口初始化；尚未达到3A游戏流畅稳定游玩的目标。
 
-0.1.43已构建并安装：修正共享内存、大于2GB映射、shader复用和管线错误，加入可选 [Sarek1.14.1](docs/dxvk-sarek-1.14.1.md)，修复Acquire2超时结果及表面查询入口，增加EGL导入短暂失败重试与窗口resize恢复，并纠正呈现队列及多窗口批量同步。修正Sarek资产被Android自动解压改名的问题后，实际启动器观察窗口内无访问异常并正常退出，但画面仍黑；日志已有具体内存分配失败，GPU显示仍未完善。
+0.1.45已构建并安装：修正Sarek打包并验证APK内原包摘要；现有wrapper配合Sarek1.14.1已实际显示Superposition完整GUI并可操作低画质预设，3D场景和性能仍待验证。实验Vortek的跨进程内存类型已按驱动实查收紧，但缺少游戏要求的coherent上传类型，当前不能替代wrapper，也未解决其游戏黑屏。
 
 ## 使用
 

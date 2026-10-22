@@ -120,3 +120,11 @@ APK构建及v2通过，631682630bytes，SHA2560fd5ae2ed82066c4ad958a61f5676dbece
 APK641478271bytes，SHA25667799112265beaef29a17e57c57066668e62c825a1cd8bcac59b7a7b60f386d6，构建/v2/更新安装通过。仅复查同一Sarek启动器的当前错误，记录到type0/flags0x7分配返回VK_ERROR_INVALID_EXTERNAL_HANDLE，auto策略opaque=0/dma=1，非专用image/buffer。
 
 一次app UID原生驱动查询（vortek-memory-transport-probe.c）确认AHB BLOB4096字节仅支持typeBits0x2，即type1/flags0xb；该类型导入及native Map成功。不能把原生type0的HOST_VISIBLE/COHERENT直接当作代理跨进程可用类型，接续修正报告与分配路径。该查询没有渲染或游戏通过结论。
+
+### 0.1.45实际共享内存能力与wrapper对照
+
+APK641479799bytes，SHA25611f1915a884a00eb8dcc34402d537754158eee7a2d8e15e9001823e3d3856955，构建/v2/保留数据安装通过。Vortek实际查询native HOST_VISIBLE mask0x3、shared0x2；不能共享的type0只报告DEVICE_LOCAL并走原生GPU分配，类型索引不替换。代价是要求coherent staging的程序明确失败：Superposition仍有分配失败，Warzone Vulkan初始化ErrorFeatureNotPresent后尝试OpenGL，未显示第一关；不是本轮游戏通过。
+
+原生定点进一步确认：RARELY CPU用途仍只支持type1；AHB原fd作为DMA-BUF查询仍typeBits0x2；OPAQUE_FD buffer features=0，DMA_BUF features=IMPORTABLE(0x4)，没有已证实的可导出coherent通道。没有伪造HOST_COHERENT或安装系统驱动。
+
+同一版本改用原wrapper+Sarek1.14.1，实际Superposition GUI文字/图片/控件完整显示，Android输入已在GUI中选择720p Low并点击RUN，原版superposition.exe已显示UNIGINE启动图和LOADING画面；这些不是3D场景或性能验收。观测助手默认30秒，显式--observe-gui允许最多5分钟GUI操作，不代替引擎稳定性测试。

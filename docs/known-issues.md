@@ -53,3 +53,5 @@
 34. 0.1.43修复Sarek压缩包经aapt自动解开导致AssetManager找不到`.tar.gz`的打包问题；同一原始包以`.tgz`保存并核对APK内摘要。实机启动器30秒观察期正常存活/退出，仍黑屏，日志明确存在内存分配失败，继续定位；0.1.42首次失败未启动游戏，不可沿用旧日志判断。
 
 35. 0.1.44实机定位内存通道：Mali原生type0虽为0x7，但本app AHB BLOB实际只支持type1(0xb)。代理继续对游戏报告type0可映射，会令DXVK反复选择不能导入的类型。下一步修正可见类型与对应分配，不能静默替换游戏选中的类型。
+
+36. 0.1.45按实际跨进程通道收紧HOST_VISIBLE/COHERENT/CACHED报告：Mali共享mask仅0x2，GPU-only类型走原生分配。此修正暴露Vortek不具备coherent上传通道：Superposition仍不能分配其要求的内存，Warzone当前初始化失败，不能沿用0.1.34的成功当作新版回归通过。原wrapper+Sarek1.14.1的Superposition GUI已实际显示，可操作720p Low并进入原引擎加载；尚非3D通过。

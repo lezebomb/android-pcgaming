@@ -97,3 +97,9 @@ GPUImage原有100ms导入退避，却被Vortek首次失败直接转为DEVICE_LOS
 原实现未传入vkQueuePresentKHR的queue，一直使用后端固定queue0。现在使用完整queue/present-info请求（成对协议v6），一次提交同批已准备图像的FOREIGN释放命令，只消费一次等待信号；一次GPU完成等待后才逐窗口GL拷贝，减少多窗口重复等待。即使所有目标过期，等待信号也会被消费；提交前内存失败保留图像/信号状态，提交后不能保证状态的失败终止设备会话。依据：[vkQueuePresentKHR队列和错误语义](https://docs.vulkan.org/refpages/latest/refpages/source/vkQueuePresentKHR.html)。
 
 一次直接编译产品present_queue.c的CPU记录接口短查覆盖调用队列、两窗口单次等待、部分/全部目标失败、提交前内存错误和提交后错误，无真实GPU。已编译ARM64两端与APK，未安装实机。
+
+### 0.1.45实机内存通道边界
+
+app UID查询确认原生type0为DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT(0x7)，但AHB BLOB只支持type1(0xb)，且RARELY CPU用途和原fd的DMA-BUF查询仍只有0x2。驱动对OPAQUE_FD buffer报告0功能，DMA-BUF仅IMPORTABLE，没有已验证的可导出coherent通道。新查询用最小临时device与局部函数指针，不覆盖游戏设备的共享分发表，及时释放临时资源；游戏选择类型前收紧可见标志，不在分配后偷换类型。
+
+这是能力纠正，不能自动补出coherent内存：当前Vortek在Superposition和Warzone所需的coherent staging上失败。只把类型1伪装成COHERENT，或无差别flush/invalidate整堆，都不足以证明正确性，未采用。默认wrapper路线保持独立；同机wrapper+Sarek1.14.1已实际显示Superposition完整GUI，并可选择720p Low启动原版引擎加载。GUI和加载图仍不是3D/可玩验收。

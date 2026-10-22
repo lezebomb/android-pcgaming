@@ -14,6 +14,7 @@ add_library(vortekrenderer SHARED
             src/vulkan_helper.c
             src/vk_context.c
             src/resource_memory.c
+            src/memory_transport.c
             src/xwindow_swapchain.c
             src/present_queue.c
             src/texture_decoder.c

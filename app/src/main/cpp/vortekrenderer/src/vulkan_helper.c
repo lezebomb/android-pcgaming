@@ -101,6 +101,7 @@ void initVulkanInstance(VkContext* context, VkInstance instance, const VkApplica
 
     context->hasExternalMemoryFd = isExternalMemoryHandleTypeSupported(physicalDevices[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT);
     context->hasExternalMemoryDMABuf = isExternalMemoryHandleTypeSupported(physicalDevices[0], VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT);
+    context->hostVisibleMemoryTypes = ResourceMemory_queryHostVisibleTypes(context, physicalDevices[0]);
 
     MEMFREE(context->engineName);
     context->engineVersion = 0;
@@ -280,6 +281,11 @@ void injectExtensions2(VkContext* context, VkExtensionProperties** extensions, u
 }
 
 void checkDeviceMemoryProperties(VkContext* context, VkPhysicalDeviceMemoryProperties* memoryProperties, void* pNext) {
+    for (uint32_t i = 0; i < memoryProperties->memoryTypeCount && i < 32; i++) {
+        if (!(context->hostVisibleMemoryTypes & (1u << i)))
+            memoryProperties->memoryTypes[i].propertyFlags &= ~(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+    }
     VkDeviceSize maxHeapSize = (VkDeviceSize)context->maxDeviceMemory << 20;
     if (maxHeapSize == 0) maxHeapSize = deviceMemoryInfo.maxAllocationSize;
 
