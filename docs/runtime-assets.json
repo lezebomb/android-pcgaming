@@ -80,7 +80,7 @@
       "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.12.1-sarek.tzst"
     },
     {
-      "path": "app/src/main/assets/dxwrapper/dxvk-1.14.1-sarek.tar.gz",
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.14.1-sarek.tgz",
       "size": 9821269,
       "sha256": "07a6d5d889e9810ce856511e853cd72d2f547ec12c0dc5d7049b32e4bfa05c25",
       "kind": "pinned-url",

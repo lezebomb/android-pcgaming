@@ -108,3 +108,9 @@ APK构建及v2通过，631682630bytes，SHA2560fd5ae2ed82066c4ad958a61f5676dbece
 ### 离线0.1.42批量呈现
 
 一次CPU时序短查直接编译产品present_queue.c，以记录端验证调用方队列、单次信号消费、先GPU完成后GL，以及各窗口/内存错误：vortek_present_queue_result=0。ARM64客户/服务端、APK和v2验签通过。APK642838851bytes，SHA2568ac0a742e30846828fcf23407198fa030edc7f143e79100e97a0bcb1a6447444。未安装或实机测试，不能据此判断帧率或黑屏改善。
+
+### 0.1.43实机Sarek打包修正
+
+0.1.42实机首次启动因Sarek资产找不到提前返回；发现aapt自动解开`.gz`并移除后缀。0.1.43改`.tgz`保持原包，最终APK精确entry内容SHA256等于作者包07a6d5d889e9810ce856511e853cd72d2f547ec12c0dc5d7049b32e4bfa05c25。APK641476411bytes，SHA256b87778ebe713f2be80599c4ae3fbfca567faed08d69ea376748897047a8a021e，构建/v2/保留数据安装通过。
+
+实际Sarek1.14.1启动器30秒观察期存活，WM_CLOSE后exit_code=0；真实截图仍黑，未执行3D benchmark。DXVK日志有1MiB/256bytes/16KiB内存分配失败及共享纹理格式不支持；不将无访问异常冒充完整显示修复。实机证据留本地产物目录，不上传截图/设备日志。

@@ -23,7 +23,7 @@ import java.util.zip.GZIPInputStream;
 /** Unmodified, pinned upstream Sarek release; selected separately from defaults. */
 public final class DxvkSarek {
     public static final String VERSION = "1.14.1-sarek";
-    public static final String ASSET = "dxwrapper/dxvk-1.14.1-sarek.tar.gz";
+    public static final String ASSET = "dxwrapper/dxvk-1.14.1-sarek.tgz";
     private static final String SHA256 = "07a6d5d889e9810ce856511e853cd72d2f547ec12c0dc5d7049b32e4bfa05c25";
     private static final String PREFIX = "dxvk-sarek-1.14.1/build/";
     private static final Set<String> DLLS = new HashSet<>(Arrays.asList(
