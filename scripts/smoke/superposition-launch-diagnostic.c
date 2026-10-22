@@ -7,11 +7,14 @@ static FILE *record;
 static BOOL CALLBACK focus_windows(HWND window, LPARAM unused) {
     (void)unused;
     if (!IsWindowVisible(window)) return TRUE;
-    DWORD pid=0; GetWindowThreadProcessId(window,&pid);
+    DWORD pid=0; DWORD thread=GetWindowThreadProcessId(window,&pid);
     char title[256]={0},name[128]={0};
     GetWindowTextA(window,title,sizeof(title));GetClassNameA(window,name,sizeof(name));
     fprintf(record,"visible=%p pid=%lu foreground=%d title=%s class=%s\n",
         window,(unsigned long)pid,window==GetForegroundWindow(),title,name);
+    GUITHREADINFO gui={0};gui.cbSize=sizeof(gui);
+    if(GetGUIThreadInfo(thread,&gui)) fprintf(record,"thread=%lu active=%p focus=%p capture=%p\n",
+        (unsigned long)thread,gui.hwndActive,gui.hwndFocus,gui.hwndCapture);
     return TRUE;
 }
 static BOOL CALLBACK windows(HWND window, LPARAM closing) {

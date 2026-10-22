@@ -10,6 +10,8 @@ import com.winlator.cmod.xserver.events.ConfigureNotify;
 import com.winlator.cmod.xserver.events.ConfigureRequest;
 import com.winlator.cmod.xserver.events.DestroyNotify;
 import com.winlator.cmod.xserver.events.Event;
+import com.winlator.cmod.xserver.events.FocusEvent;
+import com.winlator.cmod.xserver.events.FocusEvent.Detail;
 import com.winlator.cmod.xserver.events.Expose;
 import com.winlator.cmod.xserver.events.MapNotify;
 import com.winlator.cmod.xserver.events.MapRequest;
@@ -25,6 +27,7 @@ public class WindowManager extends XResourceManager {
     public final Window rootWindow;
     private final SparseArray<Window> windows = new SparseArray<>();
     public final DrawableManager drawableManager;
+    private final XServer xServer;
     private Window focusedWindow;
     private boolean pointerRootFocus;
     private FocusRevertTo focusRevertTo = FocusRevertTo.NONE;
@@ -56,7 +59,8 @@ public class WindowManager extends XResourceManager {
         default void onReparentWindow(Window window, Window newParent) {}
     }
 
-    public WindowManager(ScreenInfo screenInfo, DrawableManager drawableManager) {
+    public WindowManager(XServer xServer, ScreenInfo screenInfo, DrawableManager drawableManager) {
+        this.xServer = xServer;
         this.drawableManager = drawableManager;
         int id = IDGenerator.generate();
         Drawable drawable = drawableManager.createDrawable(id, screenInfo.width, screenInfo.height, drawableManager.getVisual());
@@ -148,18 +152,88 @@ public class WindowManager extends XResourceManager {
     }
 
     public void setFocus(Window focusedWindow, FocusRevertTo focusRevertTo) {
-        this.focusedWindow = focusedWindow;
-        this.pointerRootFocus = false;
-        this.focusRevertTo = focusRevertTo;
+        changeFocus(focusedWindow, false, focusRevertTo);
     }
 
     public void setPointerRootFocus(FocusRevertTo focusRevertTo) {
-        setFocus(rootWindow, focusRevertTo);
-        pointerRootFocus = true;
+        changeFocus(rootWindow, true, focusRevertTo);
     }
 
     public int getFocusWindowId() {
         return pointerRootFocus ? 1 : focusedWindow != null ? focusedWindow.id : 0;
+    }
+
+    private void focusEvent(boolean entering, Window window, Detail detail) {
+        if (window != null) window.sendEvent(Event.FOCUS_CHANGE, new FocusEvent(entering, window, detail));
+    }
+
+    // Path endpoints are exclusive. Iteration avoids recursion on client trees.
+    private void focusPath(boolean entering, Window leaf, Window stop, Detail detail) {
+        ArrayList<Window> path = new ArrayList<>();
+        for (Window node = leaf; node != null && node != stop; node = node.getParent()) path.add(node);
+        if (entering) {
+            for (int i = path.size() - 1; i >= 0; i--) focusEvent(true, path.get(i), detail);
+        } else {
+            for (Window node : path) focusEvent(false, node, detail);
+        }
+    }
+
+    private void changeFocus(Window next, boolean nextPointerRoot, FocusRevertTo revertTo) {
+        Window previous = focusedWindow;
+        boolean previousPointerRoot = pointerRootFocus;
+        focusedWindow = next;
+        pointerRootFocus = nextPointerRoot;
+        focusRevertTo = revertTo;
+        if (previous == next && previousPointerRoot == nextPointerRoot) return;
+
+        Window pointer = xServer.inputDeviceManager != null ? xServer.inputDeviceManager.getPointWindow() : rootWindow;
+        if (pointer == null) pointer = rootWindow;
+        boolean oldSpecial = previous == null || previousPointerRoot;
+        boolean newSpecial = next == null || nextPointerRoot;
+        Detail oldDetail = previousPointerRoot ? Detail.POINTER_ROOT : Detail.NONE;
+        Detail newDetail = nextPointerRoot ? Detail.POINTER_ROOT : Detail.NONE;
+
+        if (oldSpecial) {
+            if (previousPointerRoot) focusPath(false, pointer, null, Detail.POINTER);
+            focusEvent(false, rootWindow, oldDetail);
+            if (newSpecial) {
+                focusEvent(true, rootWindow, newDetail);
+                if (nextPointerRoot) focusPath(true, pointer, null, Detail.POINTER);
+            } else {
+                focusPath(true, next.getParent(), null, Detail.NONLINEAR_VIRTUAL);
+                focusEvent(true, next, Detail.NONLINEAR);
+                if (next.isAncestorOf(pointer)) focusPath(true, pointer, next, Detail.POINTER);
+            }
+        } else if (newSpecial) {
+            if (previous.isAncestorOf(pointer)) focusPath(false, pointer, previous, Detail.POINTER);
+            focusEvent(false, previous, Detail.NONLINEAR);
+            focusPath(false, previous.getParent(), null, Detail.NONLINEAR_VIRTUAL);
+            focusEvent(true, rootWindow, newDetail);
+            if (nextPointerRoot) focusPath(true, pointer, null, Detail.POINTER);
+        } else if (previous.isAncestorOf(next)) {
+            if (previous.isAncestorOf(pointer) && pointer != next &&
+                    !next.isAncestorOf(pointer) && !pointer.isAncestorOf(next))
+                focusPath(false, pointer, previous, Detail.POINTER);
+            focusEvent(false, previous, Detail.INFERIOR);
+            focusPath(true, next.getParent(), previous, Detail.VIRTUAL);
+            focusEvent(true, next, Detail.ANCESTOR);
+        } else if (next.isAncestorOf(previous)) {
+            focusEvent(false, previous, Detail.ANCESTOR);
+            focusPath(false, previous.getParent(), next, Detail.VIRTUAL);
+            focusEvent(true, next, Detail.INFERIOR);
+            if (next.isAncestorOf(pointer) && pointer != previous &&
+                    !previous.isAncestorOf(pointer) && !pointer.isAncestorOf(previous))
+                focusPath(true, pointer, next, Detail.POINTER);
+        } else {
+            Window common = previous.getParent();
+            while (common != null && common != next && !common.isAncestorOf(next)) common = common.getParent();
+            if (previous.isAncestorOf(pointer)) focusPath(false, pointer, previous, Detail.POINTER);
+            focusEvent(false, previous, Detail.NONLINEAR);
+            focusPath(false, previous.getParent(), common, Detail.NONLINEAR_VIRTUAL);
+            focusPath(true, next.getParent(), common, Detail.NONLINEAR_VIRTUAL);
+            focusEvent(true, next, Detail.NONLINEAR);
+            if (next.isAncestorOf(pointer)) focusPath(true, pointer, next, Detail.POINTER);
+        }
     }
 
     public FocusRevertTo getFocusRevertTo() {

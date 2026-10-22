@@ -71,7 +71,7 @@ public class XServer {
         pixmapManager = new PixmapManager();
         drawableManager = new DrawableManager(this);
         cursorManager = new CursorManager(drawableManager);
-        windowManager = new WindowManager(screenInfo, drawableManager);
+        windowManager = new WindowManager(this, screenInfo, drawableManager);
         selectionManager = new SelectionManager(windowManager);
         inputDeviceManager = new InputDeviceManager(this);
         grabManager = new GrabManager(this);

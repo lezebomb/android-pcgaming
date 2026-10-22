@@ -148,3 +148,11 @@ APK构建/v2/保留数据安装通过；641480799bytes，SHA25675c22809574662ba7
 在同机Warzone第一关进行必要对应复查：原wrapper、游戏DirectX后端（ANGLE OpenGL ES→D3D11→DXVK1.10.3）实际显示地形、车辆、HUD。此前0.1.47同路径已能选取但点击后取消选取；本次虚拟手柄LB+LS映射Ctrl+U选7单位，左摇杆定位后A映射左键下令，前后截图确认7辆车由分散起始位置移动到目标点，并保持选中。HUD采样约30FPS，不作为校准的帧时间或长稳结论，也不是3A验收。
 
 测试助手默认仍3分钟；显式--long-play给单个真实操作会话最多8分钟，可用原stop文件提前结束。--directx明确选择游戏现成后端；只关闭本Wine会话已核对身份的附带信息浏览器及其Gecko提示，不安装浏览器、不改Android其他应用。
+
+### 0.1.49窗口焦点通知
+
+实现普通FocusIn/Out的32字节事件，区分祖先/后代/非线性路径、None与PointerRoot，并在窗口取消映射导致回退时通知订阅客户端。没有补齐键盘grab模式或焦点时间戳，不宣称完整X11协议实现。
+
+APK构建/v2/保留数据安装通过，641482255bytes，SHA2560f2920d0859cc1c748eb8988886907fc680f56584a49d260dfad6f8290c95cd4。只运行一次新的app UID原生wire检查：x11_focus_result=0，覆盖目标与回退独立、祖先事件顺序/详情、父窗口取消映射、PointerRoot及BadValue/BadMatch和流边界。不重复旧GPU或输入套件。
+
+Superposition实际线程记录显示引擎窗口foreground=1且active/focus均为该窗口，仍在加载后stopped/quit，未显示3D场景。因此焦点通知修正不能当作该引擎退出原因已经解决。
