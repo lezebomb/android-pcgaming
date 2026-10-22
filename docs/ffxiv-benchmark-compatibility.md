@@ -24,8 +24,8 @@ node scripts/launch-ffxiv-benchmark.mjs --character-creation --wined3d-renderer=
 `--engine` selects the cutscene test, `--character-creation` selects its interactive
 character mode, and no mode argument selects the original .NET launcher. Diagnostic
 settings request a 960x540 window, 50 percent internal scale and a 30 FPS cap; the
-engine can enforce a larger minimum window. The virtual desktop is 1280x960 to
-keep its character editor visible. These are diagnostic requests, not a measured
+engine can enforce a larger minimum window. The baseline desktop is 1280x800;
+`--tall-desktop` requests 1280x960. These are diagnostic requests, not a measured
 performance claim.
 
 `--diagnose` requires compiling `scripts/smoke/ffxiv-launch-diagnostic.c` as the
@@ -60,6 +60,20 @@ custom `renderer`. Clearing it restores the normal path on the next launch.
 `--legacy-query` saves this option without an environment override. The preceding
 device observations used app 0.1.50 with the explicit environment setting; the
 installed product option needs its own corresponding short check.
+
+The installed 0.1.51 comparison confirmed that the saved option supplies
+`WINE_D3D_CONFIG=renderer=gdi` to the app-owned engine without a script override.
+At 1280x800 its character and animated background returned. At 1280x960 a separate
+run displayed an overexposed white background and black character silhouettes;
+returning to 1280x800 removed that symptom. This comparison identifies a
+resolution-dependent rendering limitation, not its native-driver root cause.
+Keep the baseline size while investigating it.
+
+An actual virtual controller check in the running 0.1.51 character menu used the
+existing keyboard/mouse profile 1000: the left stick moved the cursor, and A
+opened Create Character and confirmed its dialog. This is a mapped menu action,
+not verified native gamepad support or combat/gameplay. `--mapped-controls`
+selects that installed profile; the default keeps native controller mode.
 
 Private imports, captures and raw logs stay in ignored local directories. Do not
 repeat the already successful import or the known failing GL/Vulkan comparisons

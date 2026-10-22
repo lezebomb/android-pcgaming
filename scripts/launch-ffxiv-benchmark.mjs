@@ -40,11 +40,11 @@ container_id=1
 executablePath=${executable}
 ${engine?'execArgs='+(diagnostic?'--engine ':'')+engineArguments+'\n':''}\
 workingDirectory=C:/Games/DGFFXIVBench
-screenSize=1280x960
+screenSize=${process.argv.includes('--tall-desktop')?'1280x960':'1280x800'}
 dxwrapper=dxvk
 dxwrapperConfig=version=1.14.1-sarek,framerate=30,async=0,asyncCache=0,vkd3dVersion=None,vkd3dLevel=auto,maliCompat=1,ddrawrapper=none,dxvkConfig=1
 envVars=WINEDEBUG=${diagnostic?'+seh,+loaddll':'-all'} DXVK_LOG_LEVEL=info DXVK_LOG_PATH=C:/Games/DGFFXIVBench${renderer?' WINE_D3D_CONFIG=renderer='+renderer:''}
-controlsProfile=0
+controlsProfile=${process.argv.includes('--mapped-controls')?'1000':'0'}
 ${process.argv.includes('--legacy-query')?'legacyGraphicsQuery=gdi\n':''}\
 simTouchScreen=1
 `;
