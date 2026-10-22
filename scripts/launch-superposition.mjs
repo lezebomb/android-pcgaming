@@ -38,5 +38,5 @@ if (diagnostic) await stagePrivate(adb,pkg,fs.readFileSync('artifacts/DG-Superpo
 await stagePrivate(adb,pkg,Buffer.from(desktop),saved);
 fs.mkdirSync('artifacts/superposition', {recursive:true});
 fs.writeFileSync('artifacts/superposition/DG-Superposition.desktop',desktop);
-if (!process.argv.includes('--stage-only')) console.log(call(['shell','am','start','-a','android.intent.action.VIEW','-n',`${pkg}/com.winlator.cmod.MainActivity`,
+if (!process.argv.includes('--stage-only')) console.log(call(['shell','am','start','--activity-single-top','-a','android.intent.action.VIEW','-n',`${pkg}/com.winlator.cmod.MainActivity`,
   '--ez','launch_game','true','--ei','container_id','1','--es','shortcut_path',`/data/user/0/${pkg}/${saved}`]).trim());

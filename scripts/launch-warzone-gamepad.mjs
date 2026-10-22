@@ -15,6 +15,6 @@ if (process.argv.includes('--directx')) extraArgs.push('--directx');
 if (process.argv.includes('--long-play')) extraArgs.push('--long-play');
 if(extraArgs.length) desktop += 'execArgs='+extraArgs.join(' ')+'\n';
 await stagePrivate(adb,pkg,Buffer.from(desktop),saved);
-call(['shell','am','start','-a','android.intent.action.VIEW','-n',`${pkg}/com.winlator.cmod.MainActivity`,
+call(['shell','am','start','--activity-single-top','-a','android.intent.action.VIEW','-n',`${pkg}/com.winlator.cmod.MainActivity`,
   '--ez','launch_game','true','--ei','container_id','1','--es','shortcut_path',`/data/user/0/${pkg}/${saved}`]);
 console.log(`Started the original game via bounded helper (max ${process.argv.includes('--long-play')?8:3} minutes); no gameplay pass implied.`);
