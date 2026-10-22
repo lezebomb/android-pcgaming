@@ -248,6 +248,9 @@ error:
 
 void XWindowSwapchain_destroy(VkDevice device, XWindowSwapchain* swapchain) {
     if (!swapchain) return;
+    // Internal acquire ownership commands may still be queued even if the
+    // application never submitted a render/present for the acquired image.
+    if (swapchain->queue) vulkanWrapper.vkQueueWaitIdle(swapchain->queue);
     JMethods* methods = swapchain->jmethods;
     for (int i = 0; i < swapchain->imageCount; i++) {
         (*methods->env)->CallVoidMethod(methods->env, methods->obj, methods->releaseOutput, (jlong)&swapchain->images[i]);

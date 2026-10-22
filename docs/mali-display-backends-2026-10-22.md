@@ -77,3 +77,11 @@ SPIR-V增加零长度/越界指令及所读取操作数的界限检查，OpName�
 ### 离线0.1.39：开发者Sarek补丁参考
 
 已从作者源码确认ARM未绑定纹理优化开关、Clip/Cull能力门控与新版分配器，并把固定1.14.1原发布包作为可选图形版本接入，保留物理ARM标识。同步编译用于初次画面对比，默认旧版本不变。详见 [来源、许可证与边界](dxvk-sarek-1.14.1.md)。当前只是build/v2与解包短查，不是实机显示通过。
+
+### 离线0.1.40：补齐表面查询与Acquire2
+
+确认AcquireNextImage2仍使用上游把0到10状态当index的旧解码，TIMEOUT=2可能被当作第3张图；现在两入口共用校验回复路径，错误/超时不写index，成功回复校验4字节。host两入口均独立返回状态与index（成对协议v5）。
+
+系统可能枚举VK_KHR_get_surface_capabilities2，但原client缺两个对应入口。现用本后端已实现的表面能力/格式查询补齐，保持调用方sType/pNext，正确处理容量和INCOMPLETE；不把X11 window id传给Android driver当surface。统一屏蔽未实现的present-wait/id、display-timing、HDR/维护/可变格式与原生平台surface、debug callback等扩展，防止枚举有功能但调用无入口。Swapchain销毁前等待本后端内部ownership命令结束。
+
+依据：[Acquire2状态](https://docs.vulkan.org/refpages/latest/refpages/source/vkAcquireNextImage2KHR.html)、[格式查询2容量语义](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceFormats2KHR.html)。一次离线产品适配器短查vortek_wsi_result=0，覆盖容量/结构头、超时不改index与屏蔽范围。ARM64两端编译通过；实机效果仍未知。

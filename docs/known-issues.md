@@ -43,3 +43,5 @@
 29. 离线0.1.38补齐guest Map对应的原生vkMapMemory生命周期；非coherent跨进程缓存一致性尚待设备验证，external resource创建声明仍待进一步适配。
 
 30. 0.1.39加入可选Sarek1.14.1原版DLL与Mali识别，只有离线构建/解包结果，未实机验收；DX12/艾尔登接口初始化仍未解决。详见dxvk-sarek-1.14.1.md。
+
+31. 离线0.1.40修正Acquire2超时解码与SurfaceQueries2缺失，过滤未实现的WSI/debug扩展；尚未实机复查，不把接口修正等同完整黑屏修复。

@@ -3,6 +3,7 @@
 #include "vulkan_helper.h"
 #include "dma_utils.h"
 #include "dimensity_upload.h"
+#include "dimensity_wsi.h"
 
 #define VK_MAKE_VERSION_STR(s, v) sprintf(s, "%d.%d.%d", VK_VERSION_MAJOR(v), VK_VERSION_MINOR(v), VK_VERSION_PATCH(v))
 
@@ -350,7 +351,7 @@ VkExtensionProperties* getExposedDeviceExtensionProperties(VkContext* context, V
             }
         }
         else srcProperty = &srcProperties[i];
-        if (!expose) continue;
+        if (!expose || dgUnsupportedDeviceExtension(srcProperty->extensionName)) continue;
 
         if (context->disabledDeviceExtensions) {
             for (j = 0; j < context->disabledDeviceExtensions->size; j++) {

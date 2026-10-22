@@ -2,6 +2,7 @@
 #include "vk_context.h"
 #include "vulkan_helper.h"
 #include "sysvshared_memory.h"
+#include "dimensity_wsi.h"
 
 #define MSG_DEBUG_UNIMPLEMENTED_FUNC "%s not implemented yet\n"
 
@@ -18,7 +19,7 @@ void vt_handle_vkCreateInstance(VkContext* context) {
     VkInstanceCreateInfo createInfo = {0};
     vt_unserialize_vkCreateInstance(&createInfo, NULL, NULL, context->inputBuffer, &context->memoryPool);
 
-    const char* skipExtensions[] = {"VK_KHR_surface", "VK_KHR_xlib_surface", "VK_KHR_xcb_surface"};
+    const char* const* skipExtensions = dgImplementedInstanceExtensions;
 
 #if ENABLE_VALIDATION_LAYER
     createInfo.ppEnabledLayerNames = validationLayers;
@@ -31,7 +32,7 @@ void vt_handle_vkCreateInstance(VkContext* context) {
 
     injectExtensions(context, (char***)&createInfo.ppEnabledExtensionNames, &createInfo.enabledExtensionCount,
                      extraExtensions, ARRAY_SIZE(extraExtensions),
-                     skipExtensions, ARRAY_SIZE(skipExtensions));
+                     skipExtensions, ARRAY_SIZE(dgImplementedInstanceExtensions));
 
     VkInstance instance;
     VkResult result = vulkanWrapper.vkCreateInstance(&createInfo, NULL, &instance);
@@ -209,10 +210,15 @@ void vt_handle_vkEnumerateInstanceExtensionProperties(VkContext* context) {
     VkExtensionProperties* exposedExtensions = vt_alloc(&context->memoryPool, exposedExtensionCount * sizeof(VkExtensionProperties));
     result = vulkanWrapper.vkEnumerateInstanceExtensionProperties(NULL, &exposedExtensionCount, exposedExtensions);
 
-    const char* extraExtensions[] = {"VK_KHR_surface", "VK_KHR_xlib_surface", "VK_KHR_xcb_surface"};
+    uint32_t kept = 0;
+    for (uint32_t i = 0; i < exposedExtensionCount; i++)
+        if (!dgUnsupportedInstanceExtension(exposedExtensions[i].extensionName))
+            exposedExtensions[kept++] = exposedExtensions[i];
+    exposedExtensionCount = kept;
+    const char* const* extraExtensions = dgImplementedInstanceExtensions;
     const char* skipExtensions[] = {"VK_KHR_android_surface"};
     injectExtensions2(context, &exposedExtensions, &exposedExtensionCount,
-                      extraExtensions, ARRAY_SIZE(extraExtensions),
+                      extraExtensions, ARRAY_SIZE(dgImplementedInstanceExtensions),
                       skipExtensions, ARRAY_SIZE(skipExtensions));
 
     bool nullProperties = propertyCount == 0;
@@ -2097,7 +2103,8 @@ void vt_handle_vkAcquireNextImageKHR(VkContext* context) {
     VkResult result = XWindowSwapchain_acquireNextImage(swapchain, timeout, semaphore, fence, &imageIndex);
     if (result == VK_ERROR_DEVICE_LOST) context->status = result;
 
-    vt_send(context->clientRing, result, result == VK_SUCCESS ? &imageIndex : NULL, result == VK_SUCCESS ? sizeof(imageIndex) : 0);
+    vt_send(context->clientRing, result, result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR ? &imageIndex : NULL,
+            result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR ? sizeof(imageIndex) : 0);
 }
 
 static VkResult mergePresentResult(VkResult accumulated, VkResult next) {
@@ -2446,7 +2453,8 @@ void vt_handle_vkAcquireNextImage2KHR(VkContext* context) {
     VkResult result = XWindowSwapchain_acquireNextImage(swapchain, acquireInfo.timeout, acquireInfo.semaphore, acquireInfo.fence, &imageIndex);
     if (result == VK_ERROR_DEVICE_LOST) context->status = result;
 
-    vt_send(context->clientRing, result == VK_SUCCESS ? imageIndex : result, NULL, 0);
+    vt_send(context->clientRing, result, result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR ? &imageIndex : NULL,
+            result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR ? sizeof(imageIndex) : 0);
 }
 
 void vt_handle_vkCmdDispatchBase(VkContext* context) {
@@ -2471,14 +2479,14 @@ void vt_handle_vkGetPhysicalDevicePresentRectanglesKHR(VkContext* context) {
 
     vt_unserialize_vkGetPhysicalDevicePresentRectanglesKHR((VkPhysicalDevice)&physicalDeviceId, (VkSurfaceKHR)&windowId, &rectCount, NULL, context->inputBuffer, &context->memoryPool);
 
-    VkRect2D* rects = rectCount > 0 ? calloc(1, sizeof(VkPhysicalDeviceGroupProperties)) : NULL;
+    VkRect2D rect = {0};
+    VkRect2D* rects = rectCount > 0 ? &rect : NULL;
     if (rects) getWindowExtent(&context->jmethods, windowId, &rects[0].extent);
     rectCount = 1;
 
     VT_SERIALIZE_CMD(vkGetPhysicalDevicePresentRectanglesKHR, VK_NULL_HANDLE, VK_NULL_HANDLE, &rectCount, rects);
     vt_send(context->clientRing, VK_SUCCESS, outputBuffer, bufferSize);
 
-    MEMFREE(rects);
 }
 
 void vt_handle_vkCmdSetSampleLocationsEXT(VkContext* context) {

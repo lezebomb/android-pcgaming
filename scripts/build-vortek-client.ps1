@@ -14,7 +14,7 @@ if ($LASTEXITCODE) { throw 'Vortek configure failed.' }
 & $cmake --build .tooling/vortek-client-build --parallel 4
 if ($LASTEXITCODE) { throw 'Vortek client build failed.' }
 $library = '.tooling/vortek-client-build/libvulkan_vortek.so'
-$expected = 'c12ef4c7b6effacea7cae32acdea3d1e9c3076672c7e888dce33bf6f751b639c'
+$expected = '6a9033bba99b6468716419312afdfb0d2f2d5df34ace0ccc00b7178342eb672b'
 $actual = (Get-FileHash -LiteralPath $library -Algorithm SHA256).Hash.ToLowerInvariant()
 if ($actual -ne $expected) { throw 'Client binary differs from the pinned build; review before updating its application hash.' }
 New-Item -ItemType Directory -Force -Path app/src/main/assets/vortek,artifacts/vortek | Out-Null

@@ -80,17 +80,23 @@ calls=calls.replaceAll(submitWait,'bool shouldWait = true; // Paired Dimensity s
 for (const [name,count,items] of [
   ['vkGetPhysicalDeviceSurfaceFormatsKHR','pSurfaceFormatCount','pSurfaceFormats'],
   ['vkGetPhysicalDeviceSurfacePresentModesKHR','pPresentModeCount','pPresentModes'],
-  ['vkGetSwapchainImagesKHR','pSwapchainImageCount','pSwapchainImages']
+  ['vkGetSwapchainImagesKHR','pSwapchainImageCount','pSwapchainImages'],
+  ['vkGetPhysicalDevicePresentRectanglesKHR','pRectCount','pRects']
 ]) {
   const signature = new RegExp('(VkResult vt_call_'+name+'\\([^\\n]*\\) \{\\n)');
   if (!signature.test(calls)) throw Error('Unexpected enumeration entry: '+name);
   calls=calls.replace(signature,'$1    if ('+items+' && !*'+count+') return VK_INCOMPLETE;\n');
 }
 
-// Paired WSI replies: real per-swapchain results and explicit acquire index.
-const acquireStatus = '    if (result >= 0 && result <= 10) {\n        *pImageIndex = result;\n        result = VK_SUCCESS;\n    }';
-if (!calls.includes(acquireStatus)) throw Error('Unexpected acquire reply decoding');
-calls=calls.replace(acquireStatus,'    if (result == VK_SUCCESS) memcpy(pImageIndex, inputBuffer, sizeof(*pImageIndex));');
+// A status and an image index occupy separate fields in both acquire APIs.
+const acquireStart=calls.indexOf('VkResult vt_call_vkAcquireNextImageKHR(');
+const acquireEnd=calls.indexOf('\nVkResult vt_call_vkQueuePresentKHR(',acquireStart);
+if(acquireStart<0||acquireEnd<acquireStart)throw Error('Unexpected acquire implementation');
+calls=calls.slice(0,acquireStart)+fs.readFileSync('scripts/vortek-client/acquire-image.inc','utf8').replaceAll('\r\n','\n')+calls.slice(acquireEnd);
+const acquire2Start=calls.indexOf('VkResult vt_call_vkAcquireNextImage2KHR(');
+const acquire2End=calls.indexOf('\nvoid vt_call_vkCmdDispatchBase(',acquire2Start);
+if(acquire2Start<0||acquire2End<acquire2Start)throw Error('Unexpected acquire2 implementation');
+calls=calls.slice(0,acquire2Start)+fs.readFileSync('scripts/vortek-client/surface-queries.inc','utf8').replaceAll('\r\n','\n')+calls.slice(acquire2End);
 const presentStart=calls.indexOf('VkResult vt_call_vkQueuePresentKHR(');
 const presentEnd=calls.indexOf('\nVkResult vt_call_vkCreateXlibSurfaceKHR(',presentStart);
 if (presentStart<0 || presentEnd<presentStart || !calls.slice(presentStart,presentEnd).includes('pPresentInfo->pResults[i] = VK_SUCCESS'))
@@ -207,6 +213,9 @@ if(!calls.includes(entry))throw Error('Unexpected Vortek function table');
 calls=calls.replace(entry,`    {"vkCreateXcbSurfaceKHR", vt_call_vkCreateXcbSurfaceKHR},
     {"vkGetPhysicalDeviceXcbPresentationSupportKHR", vt_call_vkGetPhysicalDeviceXcbPresentationSupportKHR},
 `+entry);
+const surfaceDispatch='    {"vkGetPhysicalDeviceSurfaceCapabilitiesKHR", vt_call_vkGetPhysicalDeviceSurfaceCapabilitiesKHR},';
+if(!calls.includes(surfaceDispatch))throw Error('Missing surface dispatch table');
+calls=calls.replace(surfaceDispatch,surfaceDispatch+'\n    {"vkGetPhysicalDeviceSurfaceCapabilities2KHR", vt_call_vkGetPhysicalDeviceSurfaceCapabilities2KHR},\n    {"vkGetPhysicalDeviceSurfaceFormats2KHR", vt_call_vkGetPhysicalDeviceSurfaceFormats2KHR},');
 const pipelineStart=calls.indexOf('static VkResult waitForPipelineCreation(');
 const pipelineEnd=calls.indexOf('\nVkResult vt_call_vkCreateInstance(',pipelineStart);
 if(pipelineStart<0||pipelineEnd<pipelineStart)throw Error('Unexpected pipeline wait implementation');
@@ -239,9 +248,10 @@ fs.writeFileSync(`${out}/source-lock.json`,JSON.stringify({
     'Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions',
     'Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged',
     '64-bit memory mapping, checked page-aligned fd ranges, placed-map reservation and fd/mapping cleanup',
-    'Exact streaming pipeline replies; null native pipeline handles remain null'],
+    'Exact streaming pipeline replies; null native pipeline handles remain null',
+    'Surface queries2 adapt the proxy WSI; acquire2 shares checked acquire decoding'],
   preparedSha256:{header:hash(header),main:hash(main),calls:hash(calls),serializer:hash(clientSerializer),mapping:hash(fs.readFileSync('scripts/vortek-client/dimensity_mapping.h'))},
-  protocol:'Dimensity reply v4 (v3 plus element-wise heaps/full memory budgets); use paired server',
+  protocol:'Dimensity reply v5 (v4 plus explicit acquire2 status/index); use paired server',
   status:'optional per-game backend; offline build only, not validated on device'
 },null,2));
 console.log('Prepared pinned Android Vortek client; existing renderer unchanged.');

@@ -95,3 +95,8 @@ APK构建及v2通过，631682630bytes，SHA2560fd5ae2ed82066c4ad958a61f5676dbece
 ### 离线0.1.39可选Sarek
 
 固定作者发布包SHA256核对通过；一次host短查直接运行产品DxvkSarek.java（仅Android资产入口使用stub，tar库与产品相同）：sarek_install_result=0，Win64十DLL/Win32五DLL、没有解出源码目录。APK构建/v2通过，642834879bytes，SHA2566beee625f4fc532c743229b18c9231a8a62a4995de95a91921da4c6553a204a6。首次编译发现OnExtractFileListener并非嵌套类型，已改为产品接口并重新构建成功。未安装，已安装仍0.1.35；没有重复游戏/输入/旧探针。
+
+
+### 离线0.1.40呈现接口修正
+
+一次host检查直接编译产品表面查询实现和扩展策略，覆盖零/有限/大容量查询、输出结构头保留、Acquire2超时不改图像编号及未实现扩展过滤：vortek_wsi_result=0。ARM64客户/服务端、APK构建和v2验签通过。APK642835899bytes，SHA25665fcda402804852ee25f7156c65888bd461d8e606e22f6a0befeb720dc66afb8。此检查验证接口语义，不含GPU渲染；未安装，设备仍0.1.35。

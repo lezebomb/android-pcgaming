@@ -52,3 +52,11 @@ for that allocation; forwarded flush/invalidate calls no longer target an
 unmapped VkDeviceMemory. Free unmaps it first. Native map errors are returned
 without an invalid SCM_RIGHTS fd. Cross-process noncoherent cache behavior
 still requires real-device verification; no coherence feature is fabricated.
+
+Reply protocol v5 extends the explicit status/index convention to acquire2.
+The guest delegates acquire2 to the same checked acquire path, preserving
+TIMEOUT/NOT_READY and validating successful reply size. Surface capabilities2
+and formats2 adapt the proxy queries; unsupported native WSI/debug callback
+extensions are filtered from guest enumeration. Native Android surface handles
+are never substituted for X11 window ids. Swapchain teardown waits for its
+internal ownership commands before releasing images and the command pool.
