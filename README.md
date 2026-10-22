@@ -2,7 +2,7 @@
 
 面向天玑 8300 / Mali-G615 / 8GB 平板的本地 Windows 游戏运行器开发版。以实际审计过的 WinlatorMali 为基础，独立包名 `org.dimensity.gaming.dev`，无需 Root。
 
-已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及虚拟手柄短测。Warzone2100 已进入第一关 3D 地形、车辆与 HUD，手柄映射实际选中7个单位；移动、战斗与稳定性仍未验收。Mali 实验层已执行 SM6 绘制和 BC1/3/5/7 采样，固定 wrapper 的着色器边界修复通过单样本实机回归。平板已安装0.1.27-dev，当前0.1.31-dev离线构建含默认关闭的Vortek后端、GL上下文恢复、BC1–5上传修复，以及按系统驱动查询的AHB用途与严格匹配的RGBA输出；尚未实机确认。Superposition仍有黑屏，艾尔登法环原版EXE停在客户端接口初始化；尚未达到3A游戏流畅稳定游玩的目标。
+已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及虚拟手柄短测。Warzone2100 已进入第一关 3D 地形、车辆与 HUD，手柄映射实际选中7个单位；移动、战斗与稳定性仍未验收。Mali 实验层已执行 SM6 绘制和 BC1/3/5/7 采样，固定 wrapper 的着色器边界修复通过单样本实机回归。平板已安装0.1.34-dev。可选Vortek后端在实机Warzone第一关显示地形、车辆和HUD，并通过虚拟手柄选取7单位；完整移动、战斗、性能与稳定性仍待验收。已修正AHB格式/用途、多缓冲及Fence等待，保留默认wrapper回退。Superposition仍有黑屏，艾尔登法环原版EXE停在客户端接口初始化；尚未达到3A游戏流畅稳定游玩的目标。
 
 ## 使用
 

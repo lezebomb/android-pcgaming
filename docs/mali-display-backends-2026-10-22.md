@@ -6,14 +6,14 @@
 |---|---|---|
 | System Mali + wrapper | Android系统libvulkan/厂商Mali，外加Mesa的X11/WSI及格式处理 | 当前默认。固定原库有明确SPIR-V字节/字数越界，副本单样本回归已过；复杂场景仍未通过 |
 | Mali兼容层 | leegao为DXVK/VKD3D补部分缺失功能，同时有功能声明覆盖 | 已默认关闭、显式启用，预算/SM6/BC基础执行已证实；不当作AAA验收 |
-| Vortek | Winlator客户端通过共享内存/Unix socket连Android服务端；服务端用系统Vulkan和AHardwareBuffer更新窗口 | 默认关闭的可选路线。客户端/服务端与每游戏选择已集成，0.1.31构建通过，尚未实机 |
+| Vortek | Winlator客户端通过共享内存/Unix socket连Android服务端；服务端用系统Vulkan和AHardwareBuffer更新窗口 | 默认关闭的可选路线。客户端/服务端与每游戏选择已集成，0.1.34已在实机Warzone第一关显示3D；尚未完整验收 |
 | Turnip | Mesa的Adreno Vulkan驱动 | 不用于Mali-G615 |
 
 来源：[Vortek主仓库](https://github.com/brunodev85/vortek)、[Winlator明确加入Mali支持的更新](https://github.com/brunodev85/winlator/releases/tag/v10.0.0)、[GameNative Mali/DX12提交](https://github.com/utkarshdalal/GameNative/commit/17da0b3)、[Mali兼容层](https://github.com/leegao/compat_layer)、[Mesa Turnip适用GPU](https://docs.mesa3d.org/drivers/freedreno.html)。
 
 本地源码对照：upstream/winlator根记录的客户端commit b1730c5def9b575672e671aee11d79ae7adc63d1，app子模块a030f552f452158a2db64fdb32b490fa19c0b48d。原始客户端178930bytes，SHA256eef892505c77fb6f3cc7bc78a151662ffb77bab934e5eeff8ead7270a6734c82。客户端/服务端serializer正规化换行后完全一致（2761a1cad4c6812004e57c210b57507800b64b28ba33824b936d9daa37461253）。GameNative旧Java接口只有(I)J，但该Winlator服务端要求(IZ)J，不能混接。
 
-目前已集成配套Bionic客户端、Android服务端、Xlib/XCB surface、每游戏回退选择与GPU专用AHB呈现，缓存及socket均在本应用目录；不依赖其他应用的私有目录。当前客户端SHA256为219c72793b65df612b642afa131c4df4a9b71485caf7b5c2b63e431c5bb70e27。构建来源与配套确认规则见源码准备脚本和source-lock。离线构建不等于实机显示通过。
+目前已集成配套Bionic客户端、Android服务端、Xlib/XCB surface、每游戏回退选择与GPU专用AHB呈现，缓存及socket均在本应用目录；不依赖其他应用的私有目录。当前客户端SHA256为95623bde6cd0250e60a0f1eec006f02af6d5e961ec72837d2b472ba1bc3c926c。构建来源与配套确认规则见源码准备脚本和source-lock。离线构建不等于实机显示通过。
 
 Qt黑屏最新等待栈显示Java GLThread正常wait、XConnector在epoll；原生WSI queue没有待提交图片、event线程在condition等待，故暂没有证据证明“Present事件丢失”是该Qt会话原因。不要仅因服务端缺NotifyMSC就冒称定位成功；原库WSI源码没调用它。独立的引擎shader越界证据仍然成立。
 
@@ -45,3 +45,11 @@ BC6/7、GPU生成压缩数据、BC编码读回和块视图重解释尚未实现�
 旧实现枚举sRGB图像却将其直接绑定UNORM AHB，且固定AHB用途。现只枚举驱动确认可导入的RGBA8_UNORM，颜色空间仍为SRGB_NONLINEAR；先查询外部图像能力与AndroidHardwareBufferUsage，传递驱动返回的用途（含厂商位），导入时严格核对格式、尺寸、层和用途。保留原生错误码便于定位。规范依据：[AHB导入格式要求](https://docs.vulkan.org/refpages/latest/refpages/source/VkMemoryAllocateInfo.html)。
 
 表面格式/模式/图像枚举限制到调用方容量，零容量输出在客户侧返回INCOMPLETE；计数查询不再泄漏分配。单缓冲后端只声明FIFO与实际不透明合成。EGL导入使用当前display，并排除之前遗留的GL错误。仅ARM64/Java构建和签名通过，未在平板验证。
+
+## 0.1.32–34：实机驱动反馈
+
+先在Vortek上完成Win64 Vulkan的64次present与窗口resize重建，再发现Warzone要求>=2图像；0.1.33为每图像分配独立AHB/所有权命令并轮转2–3缓冲，断言消失但场景仍黑。
+
+上游将普通Fence等待转成SYNC_FD导出，导出会影响payload，已完成时还可能返回-1，原传FD路径没有正确处理。0.1.34改为原生GetFenceStatus轮询，等待期间不持全局IPC锁，用单调纳秒截止；取消强制export，ResetFences返回真实结果。依据：[vkGetFenceFdKHR](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetFenceFdKHR.html)。
+
+该次实机已从相同初始化黑屏进入Warzone第一关，地形/车辆/HUD可见，虚拟手柄关闭指南并选取7单位。移动与战斗尚未证明；HUD显示的0 FPS未校准，不能据此报告实际帧率。短会话由有3分钟上限的helper关闭，未作长稳验收。Vortek仍缺完整BC6/7和DX12能力，不继承另一条Mali层的通过结论。

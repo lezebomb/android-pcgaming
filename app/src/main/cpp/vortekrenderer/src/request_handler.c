@@ -513,12 +513,6 @@ void vt_handle_vkCreateFence(VkContext* context) {
     vt_unserialize_vkCreateFence((VkDevice)&deviceId, &createInfo, NULL, NULL, context->inputBuffer, &context->memoryPool);
     VkDevice device = VkObject_fromId(deviceId);
 
-    VkExportFenceCreateInfo exportFenceInfo = {0};
-    exportFenceInfo.sType = VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO;
-    exportFenceInfo.handleTypes = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
-    exportFenceInfo.pNext = createInfo.pNext;
-    createInfo.pNext = &exportFenceInfo;
-
     VkFence fence;
     VkResult result = vulkanWrapper.vkCreateFence(device, &createInfo, NULL, &fence);
 
@@ -547,7 +541,8 @@ void vt_handle_vkResetFences(VkContext* context) {
     VkFence fences[fenceCount];
     vt_unserialize_vkResetFences(VK_NULL_HANDLE, NULL, fences, context->inputBuffer, &context->memoryPool);
 
-    vulkanWrapper.vkResetFences(device, fenceCount, fences);
+    VkResult result = vulkanWrapper.vkResetFences(device, fenceCount, fences);
+    vt_send(context->clientRing, result, NULL, 0);
 }
 
 void vt_handle_vkGetFenceStatus(VkContext* context) {
@@ -574,26 +569,8 @@ void vt_handle_vkWaitForFences(VkContext* context) {
     VkFence fences[fenceCount];
     vt_unserialize_vkWaitForFences(VK_NULL_HANDLE, NULL, fences, NULL, NULL, context->inputBuffer, &context->memoryPool);
 
-    if (timeout != 0) {
-        VkResult result = VK_SUCCESS;
-        int fds[fenceCount];
-        for (int i = 0; i < fenceCount; i++) {
-            VkFenceGetFdInfoKHR getFdInfo = {0};
-            getFdInfo.sType = VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR;
-            getFdInfo.fence = fences[i];
-            getFdInfo.handleType = VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
-
-            result = vulkanWrapper.vkGetFenceFd(device, &getFdInfo, &fds[i]);
-            if (result != VK_SUCCESS) break;
-        }
-
-        send_fds(context->clientFd, fds, fenceCount, &result, sizeof(VkResult));
-        for (int i = 0; i < fenceCount; i++) CLOSEFD(fds[i]);
-    }
-    else {
-        VkResult result = vulkanWrapper.vkWaitForFences(device, fenceCount, fences, waitAll, timeout);
-        vt_send(context->clientRing, result, NULL, 0);
-    }
+    VkResult result = vulkanWrapper.vkWaitForFences(device, fenceCount, fences, waitAll, timeout);
+    vt_send(context->clientRing, result, NULL, 0);
 }
 
 void vt_handle_vkCreateSemaphore(VkContext* context) {

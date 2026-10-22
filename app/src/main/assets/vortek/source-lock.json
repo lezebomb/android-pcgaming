@@ -12,8 +12,8 @@
   "preparedSha256": {
     "header": "9598657d54ae3aec4f97080ec8608fb69d08b42c359358d1437e72df042ff4b6",
     "main": "1af03fa1afe49e79c38ee338828c294f9a95cd41c6b40adc7a884700460b712a",
-    "calls": "b464607034a5b9c3c663b96998f734ae1e761588d9d2331c744be5b3c0c0b39c"
+    "calls": "6c91eceed2e662583d80036d815bd76ae3bebe1a145a2aff8c8ccf00a1661f33"
   },
-  "protocol": "Dimensity WSI reply v2 (submit/present ack, acquire index); do not mix with unmodified upstream server",
+  "protocol": "Dimensity reply v3 (WSI v2, reset-fence ack, native fence-status polling); use paired server",
   "status": "optional per-game backend; offline build only, not validated on device"
 }

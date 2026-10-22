@@ -273,8 +273,8 @@
     },
     {
       "path": "app/src/main/assets/vortek/libvulkan_vortek.so",
-      "size": 2200136,
-      "sha256": "3dcdbf0171cff281e07e5ec99f72d245d2fb88877dc9fe1afbdc427e2348c6ff",
+      "size": 2192872,
+      "sha256": "95623bde6cd0250e60a0f1eec006f02af6d5e961ec72837d2b472ba1bc3c926c",
       "kind": "build",
       "script": "scripts/build-vortek-client.ps1"
     },

@@ -108,6 +108,49 @@ calls=calls.slice(0,presentStart)+
 }
 `+calls.slice(presentEnd);
 
+// SYNC_FD export transfers the fence payload; it is not an implementation of
+// an ordinary Vulkan fence wait. Poll native state without holding the global
+// IPC lock across the wait, so another thread can submit the signalling work.
+calls='#include <time.h>\n'+calls;
+const fenceStart=calls.indexOf('VkResult vt_call_vkWaitForFences(');
+const fenceEnd=calls.indexOf('\nVkResult vt_call_vkCreateSemaphore(',fenceStart);
+if (fenceStart<0 || fenceEnd<fenceStart || !calls.slice(fenceStart,fenceEnd).includes('recv_fds'))
+  throw Error('Unexpected external fence wait path');
+calls=calls.slice(0,fenceStart)+
+`static uint64_t dgMonotonicNs(void) {
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    return (uint64_t)now.tv_sec * 1000000000ull + now.tv_nsec;
+}
+
+VkResult vt_call_vkWaitForFences(VkDevice device, uint32_t count, const VkFence* fences, VkBool32 waitAll, uint64_t timeout) {
+    uint64_t started = dgMonotonicNs();
+    for (;;) {
+        uint32_t signalled = 0;
+        for (uint32_t i = 0; i < count; i++) {
+            VkResult result = vt_call_vkGetFenceStatus(device, fences[i]);
+            if (result == VK_SUCCESS) signalled++;
+            else if (result != VK_NOT_READY) return result;
+            if (!waitAll && signalled) return VK_SUCCESS;
+        }
+        if (waitAll && signalled == count) return VK_SUCCESS;
+        uint64_t elapsed = dgMonotonicNs() - started;
+        if (timeout == 0 || (timeout != UINT64_MAX && elapsed >= timeout)) return VK_TIMEOUT;
+        uint64_t pause = timeout == UINT64_MAX ? 1000000 : MIN(1000000, timeout - elapsed);
+        struct timespec delay = {0, (long)pause};
+        nanosleep(&delay, NULL);
+    }
+}
+`+calls.slice(fenceEnd);
+const resetStart=calls.indexOf('VkResult vt_call_vkResetFences(');
+const resetEnd=calls.indexOf('\nVkResult vt_call_vkGetFenceStatus(',resetStart);
+if (resetStart<0 || resetEnd<resetStart) throw Error('Missing reset fences entry');
+let reset=calls.slice(resetStart,resetEnd);
+if (!reset.includes('return VK_SUCCESS;')) throw Error('Unexpected reset result policy');
+reset=reset.replace('    VT_CALL_UNLOCK();','    VT_RECV_CHECKED(VT_RETURN);\n    VT_CALL_UNLOCK();')
+  .replace('return VK_SUCCESS;','return (VkResult)result;');
+calls=calls.slice(0,resetStart)+reset+calls.slice(resetEnd);
+
 const supportMarker='VkResult vt_call_vkGetPhysicalDeviceSurfaceSupportKHR(';
 if(!calls.includes(supportMarker))throw Error('Unexpected Vortek queue support entry');
 calls=calls.replace(supportMarker,`static VkBool32 vt_supportsPresentation(VkPhysicalDevice device, uint32_t family) {
@@ -182,7 +225,7 @@ fs.writeFileSync(`${out}/source-lock.json`,JSON.stringify({
     'Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions',
     'Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged'],
   preparedSha256:{header:hash(header),main:hash(main),calls:hash(calls)},
-  protocol:'Dimensity WSI reply v2 (submit/present ack, acquire index); do not mix with unmodified upstream server',
+  protocol:'Dimensity reply v3 (WSI v2, reset-fence ack, native fence-status polling); use paired server',
   status:'optional per-game backend; offline build only, not validated on device'
 },null,2));
 console.log('Prepared pinned Android Vortek client; existing renderer unchanged.');

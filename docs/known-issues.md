@@ -31,3 +31,5 @@
 23. 0.1.32增加成对Present结果与明确Acquire索引回复，窗口resize不再一律终止设备；独立交换链输出、取消尚未开始的延迟GL拷贝，避免暂停后复用旧缓冲。首次实机64次present及resize协议通过，Warzone实际仍因单缓冲>=2断言卡住，待修多缓冲。
 
 24. 0.1.33用独立AHB/所有权命令支持2–3个交换链图像并轮转Acquire；实机Warzone的>=2断言消失，但仍黑屏，Fence等待异常待查。
+
+25. 0.1.34修正Vortek Fence等待的SYNC_FD转移语义与-1已完成处理问题，改为短锁GetFenceStatus轮询，单调纳秒截止；取消强制导出，ResetFences真实结果ack。相同实机场景已进入Warzone第一关并显示3D与手柄选单位，仍无完整移动/战斗及长稳验收；DX12/BC6/7限制仍在。

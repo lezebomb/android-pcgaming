@@ -20,3 +20,9 @@ Padded rows, array layers, mip extents and cache sizes are checked. BC4 worker
 offsets and all-required memory property selection are corrected. Core device
 features remain native; this does not implement BC6/7, GPU-generated compressed
 uploads, BC encoding/readback, block-texel reinterpretation, or full BC support.
+
+Reply protocol v3 adds real present/reset-fence results and an explicit acquire
+index. Native fence status polling replaces destructive SYNC_FD export waits.
+Outputs and ownership commands are separate per swapchain image (2–3 images);
+import uses queried driver AHB usage and exact RGBA8_UNORM. Real Warzone first
+level rendering was observed; full gameplay and AAA compatibility remain open.

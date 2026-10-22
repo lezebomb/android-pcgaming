@@ -71,3 +71,7 @@ APK631681066bytes，SHA256752e46fa3557ecfe93cd777450445f575ebb3c23c958ccd5228e14
 ### 0.1.33实机多缓冲
 
 APK631681386bytes，SHA2562edfdef6071d8203fcc7fc49bbabe8eaa19ed80037ea20a83dba7a6fd15ebfc6，构建/v2/更新安装通过。Warzone日志不再出现单缓冲断言，宿主实际分配3个独立输出；仍停在初始化黑屏，未通过3D或操控。约150秒后出现waitForFences ErrorDeviceLost，不能将断言消失称为黑屏已修。下一步修正上游sync_fd等待语义；没有重跑基础输入/旧图形套件。
+
+### 0.1.34实机Fence修复
+
+APK631678438bytes，SHA256941d3b8de3761810967a7bac2619743b65707c7775d3ae929ee9db6431ead2e2；构建/v2/安装通过。相同Warzone Vortek会话已越过黑屏，日志stageTwoInitialise/gameLoad CAM_1A/Entering main loop；实际截图有地形、车辆、HUD、手柄选7单位。摇杆已移动鼠标，A/B尝试未证明单位位移，helper达到时限退出，不冒称移动/战斗/稳定性通过。未重复旧色块或全套XInput。
