@@ -46,3 +46,9 @@ dxgi.hideNvidiaGpu = False
 0.1.45的原wrapper+Sarek1.14.1路径已在同机完整显示原版免费GUI，选择720p Low后进入UNIGINE加载。与旧版Vortek黑屏结果分开记录。一次原生断点抓到`abort → terminate → device::~device → __cxa_finalize → exit`，是兼容层在进程退出时析构未join的后台线程。引擎日志先记录Benchmark running、约一秒后stopped、quit及Shutdown；没有真实场景截图，不能据此宣称跑分或3D通过。
 
 0.1.46修正该清理生命周期，保留正常显式设备销毁。`capture-superposition-abort.mjs`仅附加本应用已经启动的引擎，先选择remote-android/AArch64并加载设备实际libc，放行FEX正常使用的SIGBUS/SIGSYS/SIGUSR等信号；断点地址由该进程映射及实际符号计算，结束后移除forward并恢复自身引擎。`observe-superposition-scene.mjs`在不附加调试器的情况下限时保存阶段日志与本地截图，不自动重跑，也不根据running字样给出画面通过结论。
+
+## 退出码与识别范围的定点对照
+
+0.1.49已补普通X11焦点通知并通过一次新增原生协议短查。原免费GUI启动的引擎在线程查询中foreground/active/focus均正常，观测到的实际退出码为0，Wine内置xinput1_4.dll成功加载。现有有界窗口消息记录未捕获外部WM_CLOSE/WM_QUIT或Escape/Windows键，不能把该退出断言成Mali驱动崩溃。
+
+完全撤掉NVIDIA DXGI识别兼容会令启动器恢复0xc0000005。按作者[配置解析实现](https://github.com/pythonlover02/DXVK-Sarek/blob/0c0e8f6f62c7cb37dbf5d38413517efa00c08fef/src/util/config/config.cpp)，诊断脚本增加--launcher-identity：通过`DXVK_CONFIG=[launcher.exe];dxgi.customVendorId=10de;dxgi.hideNvidiaGpu=False`只匹配启动器EXE，避免引擎继承同一覆盖。此范围已实际显示GUI，但引擎仍退出0，最后取得的画面仍是加载图，不是3D通过。没有修改原版EXE或绕过许可。

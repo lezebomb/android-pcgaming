@@ -103,3 +103,9 @@ GPUImage原有100ms导入退避，却被Vortek首次失败直接转为DEVICE_LOS
 app UID查询确认原生type0为DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT(0x7)，但AHB BLOB只支持type1(0xb)，且RARELY CPU用途和原fd的DMA-BUF查询仍只有0x2。驱动对OPAQUE_FD buffer报告0功能，DMA-BUF仅IMPORTABLE，没有已验证的可导出coherent通道。新查询用最小临时device与局部函数指针，不覆盖游戏设备的共享分发表，及时释放临时资源；游戏选择类型前收紧可见标志，不在分配后偷换类型。
 
 这是能力纠正，不能自动补出coherent内存：当前Vortek在Superposition和Warzone所需的coherent staging上失败。只把类型1伪装成COHERENT，或无差别flush/invalidate整堆，都不足以证明正确性，未采用。默认wrapper路线保持独立；同机wrapper+Sarek1.14.1已实际显示Superposition完整GUI，并可选择720p Low启动原版引擎加载。GUI和加载图仍不是3D/可玩验收。
+
+### 23日真实游戏路线与输入断点
+
+Warzone自身DirectX后端使用ANGLE将OpenGL ES交给D3D11，再经DXVK1.10.3和原wrapper到Mali。该路线已实际显示第一关3D地形、车辆和HUD。输入的另一个独立故障是X11点击把订阅掩码当state：PointerMotion位被误作Mod4，松开事件也按移动订阅筛选。0.1.48修正后，同一关卡虚拟手柄Ctrl+U选7单位、左摇杆定位、A键下令，截图确认真实单位位移。此结果不适用于Vortek，也未建立3A性能或长期稳定结论。
+
+Superposition引擎的窗口前台及线程焦点均正常，已捕获实际退出码0与内置XInput加载成功；未取得3D场景。0.1.50把按EXE限制显卡识别覆盖做成应用选项，帮助分别配置启动器与游戏；这不提供新的硬件功能。所有操作仍在应用私有运行环境内，没有安装或替换平板系统驱动。

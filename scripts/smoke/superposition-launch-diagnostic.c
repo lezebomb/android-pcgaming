@@ -4,12 +4,26 @@
 #include <string.h>
 static DWORD child_pid;
 static FILE *record;
+static HANDLE engine_process;
+static BOOL engine_exit_recorded;
 static BOOL CALLBACK focus_windows(HWND window, LPARAM unused) {
     (void)unused;
     if (!IsWindowVisible(window)) return TRUE;
     DWORD pid=0; DWORD thread=GetWindowThreadProcessId(window,&pid);
     char title[256]={0},name[128]={0};
     GetWindowTextA(window,title,sizeof(title));GetClassNameA(window,name,sizeof(name));
+    if (!engine_process && strcmp(name,"AppWindow")==0 && strstr(title,"UNIGINE Superposition")) {
+        HANDLE process=OpenProcess(SYNCHRONIZE|PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid);
+        char image[MAX_PATH]={0};DWORD size=sizeof(image);
+        if(process && QueryFullProcessImageNameA(process,0,image,&size)) {
+            const char *base=strrchr(image,'\\');
+            if(base && _stricmp(base+1,"superposition.exe")==0) {
+                engine_process=process;fprintf(record,"engine_pid=%lu\n",(unsigned long)pid);
+                process=NULL;
+            }
+        }
+        if(process)CloseHandle(process);
+    }
     fprintf(record,"visible=%p pid=%lu foreground=%d title=%s class=%s\n",
         window,(unsigned long)pid,window==GetForegroundWindow(),title,name);
     GUITHREADINFO gui={0};gui.cbSize=sizeof(gui);
@@ -53,6 +67,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR command, int sh
         if (wait != WAIT_TIMEOUT) break;
         fprintf(record, "second=%u\n", second+1); EnumWindows(windows, 0); fflush(record);
         if (second % 5 == 0) {EnumWindows(focus_windows,0);fflush(record);}
+        if(engine_process && !engine_exit_recorded && WaitForSingleObject(engine_process,0)==WAIT_OBJECT_0) {
+            DWORD exitCode;GetExitCodeProcess(engine_process,&exitCode);engine_exit_recorded=TRUE;
+            fprintf(record,"engine_exit_code=0x%08lx second=%u\n",(unsigned long)exitCode,second+1);fflush(record);
+        }
     }
     if (wait == WAIT_TIMEOUT) {
         fprintf(record, "gui_observed_interval_complete=1\n"); EnumWindows(windows, 1);
@@ -60,6 +78,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR command, int sh
     }
     DWORD code = STILL_ACTIVE; GetExitCodeProcess(child.hProcess, &code);
     fprintf(record, "wait=%lu exit_code=0x%08lx complete=1\n", (unsigned long)wait, (unsigned long)code);
+    if(engine_process)CloseHandle(engine_process);
     fclose(record); CloseHandle(child.hProcess);
     return wait == WAIT_OBJECT_0 && code == 0 ? 0 : 1;
 }

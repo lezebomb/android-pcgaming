@@ -1512,10 +1512,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             com.winlator.cmod.core.MaliCompatLayer.configure(envVars, imageFs);
         }
 
-        if (shortcut != null && dxwrapper.contains("dxvk")
-                && com.winlator.cmod.dimensity.AdapterIdentity.NVIDIA.equals(
-                shortcut.getExtra(com.winlator.cmod.dimensity.AdapterIdentity.EXTRA))) {
-            com.winlator.cmod.dimensity.AdapterIdentity.configure(envVars);
+        if (shortcut != null && dxwrapper.contains("dxvk")) {
+            com.winlator.cmod.dimensity.AdapterIdentity.configure(envVars,
+                    shortcut.getExtra(com.winlator.cmod.dimensity.AdapterIdentity.EXTRA),
+                    shortcut.getExtra("executablePath", shortcut.path));
         }
 
         // Create our overall XEnvironment with various components

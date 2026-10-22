@@ -63,9 +63,16 @@ public final class DirectLaunchDialog {
         fields.addView(controls);
         CheckBox adapterIdentity = new CheckBox(context);
         adapterIdentity.setText("兼容旧启动器的显卡识别（DXVK）");
-        adapterIdentity.setChecked(shortcut != null && com.winlator.cmod.dimensity.AdapterIdentity.NVIDIA
-                .equals(shortcut.getExtra(com.winlator.cmod.dimensity.AdapterIdentity.EXTRA)));
+        adapterIdentity.setChecked(shortcut != null && com.winlator.cmod.dimensity.AdapterIdentity.enabled(
+                shortcut.getExtra(com.winlator.cmod.dimensity.AdapterIdentity.EXTRA)));
         fields.addView(adapterIdentity);
+        CheckBox identityScope = new CheckBox(context);
+        identityScope.setText("仅对当前 EXE 生效（子程序保留真实显卡识别）");
+        identityScope.setChecked(shortcut != null && com.winlator.cmod.dimensity.AdapterIdentity.NVIDIA_MAIN
+                .equals(shortcut.getExtra(com.winlator.cmod.dimensity.AdapterIdentity.EXTRA)));
+        identityScope.setEnabled(adapterIdentity.isChecked());
+        adapterIdentity.setOnCheckedChangeListener((button, checked) -> identityScope.setEnabled(checked));
+        fields.addView(identityScope);
         CheckBox vortek = new CheckBox(context);
         vortek.setText("实验性 Mali 显示后端（Vortek）");
         vortek.setChecked(com.winlator.cmod.core.VortekBackend.selected(shortcut));
@@ -85,6 +92,9 @@ public final class DirectLaunchDialog {
                         arguments.getText().toString(), directory.getText().toString());
                 if (!command.executable.toLowerCase(java.util.Locale.ROOT).matches(".*\\.(exe|lnk|bat|cmd)$"))
                     throw new IllegalArgumentException("请选择 EXE、LNK、BAT 或 CMD 文件");
+                if (adapterIdentity.isChecked() && identityScope.isChecked() &&
+                        com.winlator.cmod.dimensity.AdapterIdentity.executableName(command.executable) == null)
+                    throw new IllegalArgumentException("此识别范围需要 EXE，且文件名不能包含 [、] 或分号");
                 File target = resolve(container, command.executable);
                 if (target == null || !target.isFile()) throw new IllegalArgumentException("游戏文件不存在，请先导入完整目录并检查路径");
                 if (!command.directory.isEmpty()) {
@@ -107,7 +117,8 @@ public final class DirectLaunchDialog {
                 String profileId = profileIds.get(controls.getSelectedItemPosition());
                 result.putExtra("controlsProfile", profileId);
                 result.putExtra(com.winlator.cmod.dimensity.AdapterIdentity.EXTRA, adapterIdentity.isChecked()
-                        ? com.winlator.cmod.dimensity.AdapterIdentity.NVIDIA : null);
+                        ? (identityScope.isChecked() ? com.winlator.cmod.dimensity.AdapterIdentity.NVIDIA_MAIN
+                        : com.winlator.cmod.dimensity.AdapterIdentity.NVIDIA) : null);
                 result.putExtra(com.winlator.cmod.core.VortekBackend.EXTRA, vortek.isChecked()
                         ? com.winlator.cmod.core.VortekBackend.NAME : null);
                 result.saveData();

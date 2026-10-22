@@ -15,11 +15,19 @@ if (process.argv.includes('--observe-gui')) {
   if (!diagnostic) throw new Error('--observe-gui requires the bounded launcher helper.');
   desktop += 'execArgs=--observe-gui\n';
 }
-desktop += 'adapterIdentity=nvidia\ncontrolsProfile=0\nsimTouchScreen=1\n';
+if(process.argv.includes('--native-identity') && process.argv.includes('--launcher-identity')) throw new Error('Choose one identity scope.');
+desktop += (process.argv.includes('--native-identity') || process.argv.includes('--launcher-identity') ? '' : 'adapterIdentity=nvidia\n')+'controlsProfile=0\nsimTouchScreen=1\n';
+if(process.argv.includes('--launcher-identity')) desktop=desktop.replace('envVars=WINEDEBUG=',
+  'envVars=DXVK_CONFIG=[launcher.exe];dxgi.customVendorId=10de;dxgi.hideNvidiaGpu=False WINEDEBUG=');
 if (process.argv.includes('--vortek')) desktop += 'vulkanBackend=vortek\n';
 if (process.argv.includes('--legacy-dxvk')) desktop=desktop.replace('version=v2.3.1-stripped,', 'version=1.10.3,');
 if (process.argv.includes('--sarek')) desktop=desktop.replace('version=v2.3.1-stripped,', 'version=1.14.1-sarek,').replace('vkd3dVersion=2.14.1,', 'vkd3dVersion=None,');
 if (process.argv.includes('--seh')) desktop=desktop.replace('WINEDEBUG=-all', 'WINEDEBUG=+seh');
+if (process.argv.includes('--window-events')) {
+  if (process.argv.includes('--seh') || process.argv.includes('--shader-diagnosis'))
+    throw new Error('Choose one bounded diagnostic trace.');
+  desktop=desktop.replace('WINEDEBUG=-all','WINEDEBUG=+msg,+event,+seh,+loaddll');
+}
 if (process.argv.includes('--original-wrapper')) desktop=desktop.replace('WINEDEBUG=-all', 'WINEDEBUG=-all DIMENSITY_WRAPPER_BOUNDS=0');
 if (process.argv.includes('--shader-diagnosis')) desktop=desktop.replace('WINEDEBUG=-all',
   `WINEDEBUG=+seh DXVK_LOG_LEVEL=warn COMPAT_CAPTURE_SHADER_INPUTS=/data/user/0/${pkg}/files/diagnostics/shader-inputs`);

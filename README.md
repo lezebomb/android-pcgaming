@@ -2,9 +2,9 @@
 
 面向天玑 8300 / Mali-G615 / 8GB 平板的本地 Windows 游戏运行器开发版。以实际审计过的 WinlatorMali 为基础，独立包名 `org.dimensity.gaming.dev`，无需 Root。
 
-已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及虚拟手柄短测。Warzone2100 已进入第一关 3D 地形、车辆与 HUD，手柄映射实际选中7个单位；移动、战斗与稳定性仍未验收。Mali 实验层已执行 SM6 绘制和 BC1/3/5/7 采样，固定 wrapper 的着色器边界修复通过单样本实机回归。平板已安装0.1.49-dev；0.1.34的可选Vortek后端在实机Warzone第一关显示地形、车辆和HUD，并通过虚拟手柄选取7单位；完整移动、战斗、性能与稳定性仍待验收。已修正AHB格式/用途、多缓冲及Fence等待，保留默认wrapper回退。Superposition仍有黑屏，艾尔登法环原版EXE停在客户端接口初始化；尚未达到3A游戏流畅稳定游玩的目标。
+已在联想 TB375FC / Android 16 上完成基础 DX9/11 显示、Freedoom 与 C-Dogs 关卡及手柄短测。当前已安装0.1.50-dev。Warzone在原wrapper + 游戏DirectX/ANGLE路线已实际显示第一关地形、车辆与HUD；0.1.48的虚拟手柄检查确认7个单位由初始位置移动到目标点。战斗、长时间稳定性与经校准的帧时间仍待验收。Superposition已显示完整GUI，但引擎仍主动退出；艾尔登法环原版EXE停在客户端接口初始化，尚未达到3A流畅稳定游玩的目标。
 
-0.1.46已构建并安装：wrapper配合Sarek1.14.1已实际显示Superposition完整GUI；修正Mali层退出时的后台线程析构终止，对应短测未再出现该abort。引擎仍在记录Benchmark开始后立即停止，未取得3D场景或性能通过证据。实验Vortek缺少游戏要求的coherent上传类型，当前不能替代wrapper，也未解决其游戏黑屏。
+最近修复了Mali层退出清理、X11焦点请求/通知、鼠标状态字段与松开投递。代码构建、一次新增协议短查、真实游戏结果分别记录于[验证记录](docs/validation.md)。实验Vortek缺少游戏要求的coherent上传类型，当前不能替代wrapper，早期3D结果不视作新版回归通过。
 
 ## 使用
 

@@ -156,3 +156,9 @@ APK构建/v2/保留数据安装通过；641480799bytes，SHA25675c22809574662ba7
 APK构建/v2/保留数据安装通过，641482255bytes，SHA2560f2920d0859cc1c748eb8988886907fc680f56584a49d260dfad6f8290c95cd4。只运行一次新的app UID原生wire检查：x11_focus_result=0，覆盖目标与回退独立、祖先事件顺序/详情、父窗口取消映射、PointerRoot及BadValue/BadMatch和流边界。不重复旧GPU或输入套件。
 
 Superposition实际线程记录显示引擎窗口foreground=1且active/focus均为该窗口，仍在加载后stopped/quit，未显示3D场景。因此焦点通知修正不能当作该引擎退出原因已经解决。
+
+### 0.1.50显卡识别的EXE范围
+
+直接启动设置新增“仅对当前EXE生效”，用DXVK现有按EXE分段配置实现，保留名称大小写与用户已有配置。仅接受能由该格式准确表达的EXE文件名，拒绝方括号/分号等分段歧义；无效范围不会扩大到全部子程序。旧nvidia配置保留原语义。
+
+APK构建/v2/保留数据安装通过，641483039bytes，SHA2560f16ef40385df5fd344bc92edeaa6babeb453bb522c19c7ccdb8f0c858ffaee6。仅一次对应实机短查：快捷方式直接指向原版bin/launcher.exe、adapterIdentity=nvidia-main，脚本不再提供DXVK_CONFIG覆盖，应用自身生成范围配置后GUI文字/图片正常。此前等价按启动器范围的引擎对照仍退出0；本次不重复该失败场景或手柄套件，不将GUI通过当作3D修复。

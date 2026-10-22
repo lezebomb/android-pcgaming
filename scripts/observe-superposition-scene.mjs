@@ -32,7 +32,16 @@ for(let sample=0;sample<27;sample++) {
   if(engine()?.[1]!==pid){result='engine_exit';break;}
   await new Promise(r=>setTimeout(r,5000));
 }
+// The app pipe may flush after the native process disappears. Preserve that
+// final shutdown record rather than classifying a stale loading/running line.
+await new Promise(r=>setTimeout(r,700));
+const finalLog=read(logPath);fs.writeFileSync(directory+'/engine-log.html',finalLog);
+const finalText=finalLog.toString();
+previous=finalText.includes('Benchmark stopped')?'stopped':finalText.includes('Benchmark running')?'running':'loading';
 fs.writeFileSync(directory+'/result.json',JSON.stringify({pid,result,lastPhase:previous,elapsedMs:Date.now()-started},null,2)+'\n');
 fs.writeFileSync(directory+'/wine-errors.log',read('files/diagnostics/wine-errors.log'));
+for(const name of ['wine.log','wine.log.previous']) {
+  try {fs.writeFileSync(directory+'/'+name,read('files/diagnostics/'+name));}catch{}
+}
 fs.writeFileSync(directory+'/windows.txt',read('files/imagefs/home/xuser-1/.wine/drive_c/DGSmoke/superposition-launch.txt'));
 console.log(result+'; screenshots and logs saved locally. No gameplay verdict inferred.');
