@@ -8,6 +8,10 @@
 typedef struct XWindowSwapchain_Image {
     VkImage image;
     VkDeviceMemory memory;
+    VkCommandBuffer acquireCommand;
+    VkCommandBuffer releaseCommand;
+    bool everAcquired;
+    bool acquired;
 } XWindowSwapchain_Image;
 
 typedef struct XWindowSwapchain {
@@ -22,10 +26,7 @@ typedef struct XWindowSwapchain {
     VkPhysicalDevice physicalDevice;
     uint32_t queueFamily;
     VkCommandPool transferPool;
-    VkCommandBuffer acquireCommand;
-    VkCommandBuffer releaseCommand;
-    bool everAcquired;
-    bool acquired;
+    uint32_t nextImage;
     JMethods* jmethods;
 } XWindowSwapchain;
 
@@ -36,6 +37,6 @@ extern VkResult getSurfaceFormats(VkPhysicalDevice physicalDevice, uint32_t* for
 extern VkResult XWindowSwapchain_create(VkPhysicalDevice physicalDevice, VkDevice device, uint32_t graphicsQueueIndex, VkSwapchainCreateInfoKHR* swapchainInfo, JMethods* jmethods, int windowId, XWindowSwapchain** output);
 extern void XWindowSwapchain_destroy(VkDevice device, XWindowSwapchain* swapchain);
 extern VkResult XWindowSwapchain_acquireNextImage(XWindowSwapchain* swapchain, uint64_t timeout, VkSemaphore signalSemaphore, VkFence fence, uint32_t* imageIndex);
-extern VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t waitCount, const VkSemaphore* waits);
+extern VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t imageIndex, uint32_t waitCount, const VkSemaphore* waits);
 
 #endif

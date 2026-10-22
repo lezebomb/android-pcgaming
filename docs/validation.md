@@ -67,3 +67,7 @@ ARM64客户/服务端与Java APK构建通过，v2验签通过；631679342bytes�
 ### 0.1.32首次Vortek实机路径
 
 APK631681066bytes，SHA256752e46fa3557ecfe93cd777450445f575ebb3c23c958ccd5228e14261fae9937，构建/v2/保留数据安装通过。自编Win64 Vulkan程序在实际Vortek(Mali-G615 MC5)上64次呈现、一次窗口resize返回OUT_OF_DATE并重建成功，result=0；主机首次截屏超出默认缓冲，取到的后续截图已回库页，因此不以该截图证明色块可见。宿主确认AHB拷贝完成。真实Warzone Vortek短查仍黑：日志明确swapchainDesiredImageCount=1触发>=2断言，已停止该会话，下一步补多缓冲。这些均非AAA验收。
+
+### 0.1.33实机多缓冲
+
+APK631681386bytes，SHA2562edfdef6071d8203fcc7fc49bbabe8eaa19ed80037ea20a83dba7a6fd15ebfc6，构建/v2/更新安装通过。Warzone日志不再出现单缓冲断言，宿主实际分配3个独立输出；仍停在初始化黑屏，未通过3D或操控。约150秒后出现waitForFences ErrorDeviceLost，不能将断言消失称为黑屏已修。下一步修正上游sync_fd等待语义；没有重跑基础输入/旧图形套件。

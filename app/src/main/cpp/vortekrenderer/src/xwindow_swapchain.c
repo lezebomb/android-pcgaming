@@ -101,7 +101,7 @@ static VkResult createImage(VkDevice device, XWindowSwapchain* swapchain, XWindo
     if (support != VK_SUCCESS) return support;
     if (swapchain->imageExtent.width > properties.maxExtent.width ||
         swapchain->imageExtent.height > properties.maxExtent.height) return VK_ERROR_FORMAT_NOT_SUPPORTED;
-    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId, JNI_FALSE, usage, (uint64_t)swapchain);
+    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId, JNI_FALSE, usage, (uint64_t)swapchainImage);
     if (!hardwareBuffer) return VK_ERROR_SURFACE_LOST_KHR;
 
     AHardwareBuffer_Desc ahbDesc = {0};
@@ -163,7 +163,7 @@ static VkResult createImage(VkDevice device, XWindowSwapchain* swapchain, XWindo
 }
 
 int getSurfaceMinImageCount() {
-    return 1;
+    return 2;
 }
 
 VkResult getSurfaceFormats(VkPhysicalDevice physicalDevice, uint32_t* formatCount, VkSurfaceFormatKHR* formats) {
@@ -188,8 +188,8 @@ VkResult XWindowSwapchain_create(VkPhysicalDevice physicalDevice, VkDevice devic
         swapchainInfo->preTransform != VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR ||
         swapchainInfo->compositeAlpha != VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
         return VK_ERROR_FORMAT_NOT_SUPPORTED;
-    // This conservative backend exposes one independently synchronized output.
-    if (swapchainInfo->minImageCount != 1 || swapchainInfo->imageArrayLayers != 1 ||
+    // Each image has independent AHB storage and ownership commands.
+    if (swapchainInfo->minImageCount < 2 || swapchainInfo->minImageCount > 3 || swapchainInfo->imageArrayLayers != 1 ||
         swapchainInfo->imageFormat != VK_FORMAT_R8G8B8A8_UNORM ||
         swapchainInfo->imageColorSpace != VK_COLOR_SPACE_SRGB_NONLINEAR_KHR ||
         swapchainInfo->imageSharingMode != VK_SHARING_MODE_EXCLUSIVE ||
@@ -215,17 +215,17 @@ VkResult XWindowSwapchain_create(VkPhysicalDevice physicalDevice, VkDevice devic
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     result = vulkanWrapper.vkCreateCommandPool(device, &poolInfo, NULL, &swapchain->transferPool);
     if (result != VK_SUCCESS) goto error;
-    VkCommandBuffer commands[2] = {0};
+    VkCommandBuffer commands[6] = {0};
     VkCommandBufferAllocateInfo allocation = {0};
     allocation.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocation.commandPool = swapchain->transferPool;
     allocation.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocation.commandBufferCount = 2;
+    allocation.commandBufferCount = 2 * swapchain->imageCount;
     result = vulkanWrapper.vkAllocateCommandBuffers(device, &allocation, commands);
     if (result != VK_SUCCESS) goto error;
-    swapchain->acquireCommand = commands[0];
-    swapchain->releaseCommand = commands[1];
     for (int i = 0; i < swapchain->imageCount; i++) {
+        swapchain->images[i].acquireCommand = commands[2 * i];
+        swapchain->images[i].releaseCommand = commands[2 * i + 1];
         result = createImage(device, swapchain, &swapchain->images[i]);
         if (result != VK_SUCCESS) goto error;
     }
@@ -235,8 +235,8 @@ VkResult XWindowSwapchain_create(VkPhysicalDevice physicalDevice, VkDevice devic
     return VK_SUCCESS;
 
 error:
-    (*jmethods->env)->CallVoidMethod(jmethods->env, jmethods->obj, jmethods->releaseOutput, (jlong)swapchain);
     for (int i = 0; i < swapchain->imageCount; i++) {
+        (*jmethods->env)->CallVoidMethod(jmethods->env, jmethods->obj, jmethods->releaseOutput, (jlong)&swapchain->images[i]);
         if (swapchain->images[i].image) vulkanWrapper.vkDestroyImage(device, swapchain->images[i].image, NULL);
         if (swapchain->images[i].memory) vulkanWrapper.vkFreeMemory(device, swapchain->images[i].memory, NULL);
     }
@@ -249,8 +249,8 @@ error:
 void XWindowSwapchain_destroy(VkDevice device, XWindowSwapchain* swapchain) {
     if (!swapchain) return;
     JMethods* methods = swapchain->jmethods;
-    (*methods->env)->CallVoidMethod(methods->env, methods->obj, methods->releaseOutput, (jlong)swapchain);
     for (int i = 0; i < swapchain->imageCount; i++) {
+        (*methods->env)->CallVoidMethod(methods->env, methods->obj, methods->releaseOutput, (jlong)&swapchain->images[i]);
         vulkanWrapper.vkDestroyImage(device, swapchain->images[i].image, NULL);
         vulkanWrapper.vkFreeMemory(device, swapchain->images[i].memory, NULL);
     }
@@ -261,8 +261,9 @@ void XWindowSwapchain_destroy(VkDevice device, XWindowSwapchain* swapchain) {
     MEMFREE(swapchain);
 }
 
-static VkResult recordOwnershipTransfer(XWindowSwapchain* swapchain, bool acquire) {
-    VkCommandBuffer command = acquire ? swapchain->acquireCommand : swapchain->releaseCommand;
+static VkResult recordOwnershipTransfer(XWindowSwapchain* swapchain, uint32_t index, bool acquire) {
+    XWindowSwapchain_Image* target = &swapchain->images[index];
+    VkCommandBuffer command = acquire ? target->acquireCommand : target->releaseCommand;
     VkResult result = vulkanWrapper.vkResetCommandBuffer(command, 0);
     if (result != VK_SUCCESS) return result;
     VkCommandBufferBeginInfo begin = {0};
@@ -272,8 +273,8 @@ static VkResult recordOwnershipTransfer(XWindowSwapchain* swapchain, bool acquir
     if (result != VK_SUCCESS) return result;
     VkImageMemoryBarrier barrier = {0};
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.image = swapchain->images[0].image;
-    barrier.oldLayout = acquire && !swapchain->everAcquired ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_GENERAL;
+    barrier.image = target->image;
+    barrier.oldLayout = acquire && !target->everAcquired ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_GENERAL;
     barrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
     barrier.srcQueueFamilyIndex = acquire ? VK_QUEUE_FAMILY_FOREIGN_EXT : swapchain->queueFamily;
     barrier.dstQueueFamilyIndex = acquire ? swapchain->queueFamily : VK_QUEUE_FAMILY_FOREIGN_EXT;
@@ -295,14 +296,20 @@ VkResult XWindowSwapchain_acquireNextImage(XWindowSwapchain* swapchain, uint64_t
     if (!windowSize.width || !windowSize.height) return VK_ERROR_SURFACE_LOST_KHR;
     if (swapchain->imageExtent.width != windowSize.width || swapchain->imageExtent.height != windowSize.height)
         return VK_ERROR_OUT_OF_DATE_KHR;
-    if (swapchain->acquired) return timeout == 0 ? VK_NOT_READY : VK_TIMEOUT;
-    VkResult transferResult = recordOwnershipTransfer(swapchain, true);
+    uint32_t index = swapchain->imageCount;
+    for (uint32_t step = 0; step < swapchain->imageCount; step++) {
+        uint32_t candidate = (swapchain->nextImage + step) % swapchain->imageCount;
+        if (!swapchain->images[candidate].acquired) { index = candidate; break; }
+    }
+    if (index == swapchain->imageCount) return timeout == 0 ? VK_NOT_READY : VK_TIMEOUT;
+    XWindowSwapchain_Image* target = &swapchain->images[index];
+    VkResult transferResult = recordOwnershipTransfer(swapchain, index, true);
     if (transferResult != VK_SUCCESS) return transferResult;
     {
         VkSubmitInfo submitInfo = {0};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &swapchain->acquireCommand;
+        submitInfo.pCommandBuffers = &target->acquireCommand;
         if (signalSemaphore) {
             submitInfo.pSignalSemaphores = &signalSemaphore;
             submitInfo.signalSemaphoreCount = 1;
@@ -310,17 +317,20 @@ VkResult XWindowSwapchain_acquireNextImage(XWindowSwapchain* swapchain, uint64_t
 
         VkResult result = vulkanWrapper.vkQueueSubmit(swapchain->queue, 1, &submitInfo, fence);
         if (result != VK_SUCCESS) return result;
-        swapchain->everAcquired = true;
-        swapchain->acquired = true;
+        target->everAcquired = true;
+        target->acquired = true;
+        swapchain->nextImage = (index + 1) % swapchain->imageCount;
     }
 
-    *imageIndex = 0;
+    *imageIndex = index;
     return VK_SUCCESS;
 }
 
-VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t waitCount, const VkSemaphore* waits) {
-    if (!swapchain->acquired) return VK_ERROR_OUT_OF_DATE_KHR;
-    VkResult result = recordOwnershipTransfer(swapchain, false);
+VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t imageIndex, uint32_t waitCount, const VkSemaphore* waits) {
+    if (imageIndex >= swapchain->imageCount) return VK_ERROR_OUT_OF_DATE_KHR;
+    XWindowSwapchain_Image* target = &swapchain->images[imageIndex];
+    if (!target->acquired) return VK_ERROR_OUT_OF_DATE_KHR;
+    VkResult result = recordOwnershipTransfer(swapchain, imageIndex, false);
     if (result != VK_SUCCESS) return result;
     VkPipelineStageFlags* stages = waitCount ? calloc(waitCount, sizeof(VkPipelineStageFlags)) : NULL;
     if (waitCount && !stages) return VK_ERROR_OUT_OF_HOST_MEMORY;
@@ -331,7 +341,7 @@ VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t wai
     submit.pWaitSemaphores = waits;
     submit.pWaitDstStageMask = stages;
     submit.commandBufferCount = 1;
-    submit.pCommandBuffers = &swapchain->releaseCommand;
+    submit.pCommandBuffers = &target->releaseCommand;
     result = vulkanWrapper.vkQueueSubmit(swapchain->queue, 1, &submit, VK_NULL_HANDLE);
     free(stages);
     if (result != VK_SUCCESS) return result;
@@ -339,10 +349,10 @@ VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t wai
     // optimizations. The GL copy must see completed Vulkan writes.
     result = vulkanWrapper.vkQueueWaitIdle(swapchain->queue);
     if (result != VK_SUCCESS) return result;
-    swapchain->acquired = false;
+    target->acquired = false;
     JNIEnv* env = swapchain->jmethods->env;
     jint copied = (*env)->CallIntMethod(env, swapchain->jmethods->obj,
-            swapchain->jmethods->updateWindowContent, swapchain->windowId, (jlong)swapchain);
+            swapchain->jmethods->updateWindowContent, swapchain->windowId, (jlong)target);
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionClear(env);
         println("Vortek: Java compositor callback failed");

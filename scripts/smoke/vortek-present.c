@@ -15,7 +15,8 @@ static VkQueue queue;
 static VkCommandPool pool;
 static VkCommandBuffer command;
 static VkSemaphore acquired, rendered;
-static VkImage image;
+static VkImage image, images[3];
+static uint32_t imageCount;
 static VkExtent2D extent;
 static PFN_vkGetInstanceProcAddr getProc;
 #define FUNCTIONS(F) F(vkCreateWin32SurfaceKHR) F(vkEnumeratePhysicalDevices) F(vkGetPhysicalDeviceQueueFamilyProperties) F(vkGetPhysicalDeviceSurfaceSupportKHR) F(vkGetPhysicalDeviceSurfaceCapabilitiesKHR) F(vkGetPhysicalDeviceSurfaceFormatsKHR) F(vkGetPhysicalDeviceProperties) F(vkCreateDevice) F(vkGetDeviceQueue) F(vkCreateSwapchainKHR) F(vkGetSwapchainImagesKHR) F(vkDestroySwapchainKHR) F(vkCreateCommandPool) F(vkAllocateCommandBuffers) F(vkBeginCommandBuffer) F(vkEndCommandBuffer) F(vkResetCommandBuffer) F(vkCmdPipelineBarrier) F(vkCmdClearColorImage) F(vkCreateSemaphore) F(vkAcquireNextImageKHR) F(vkQueueSubmit) F(vkQueuePresentKHR) F(vkDeviceWaitIdle) F(vkDestroySemaphore) F(vkDestroyCommandPool) F(vkDestroyDevice) F(vkDestroySurfaceKHR) F(vkDestroyInstance)
@@ -31,7 +32,7 @@ static int createChain(void){
  fprintf(logFile,"format=%u colorspace=%u extent=%ux%u images=%u..%u\n",formats[0].format,formats[0].colorSpace,caps.currentExtent.width,caps.currentExtent.height,caps.minImageCount,caps.maxImageCount);
  extent=caps.currentExtent;
  VkSwapchainCreateInfoKHR info={.sType=VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,.surface=surface,.minImageCount=caps.minImageCount,.imageFormat=formats[0].format,.imageColorSpace=formats[0].colorSpace,.imageExtent=extent,.imageArrayLayers=1,.imageUsage=VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,.imageSharingMode=VK_SHARING_MODE_EXCLUSIVE,.preTransform=caps.currentTransform,.compositeAlpha=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,.presentMode=VK_PRESENT_MODE_FIFO_KHR,.clipped=VK_TRUE};
- CHECK(vkCreateSwapchainKHR(device,&info,NULL,&chain));n=1;CHECK(vkGetSwapchainImagesKHR(device,chain,&n,&image));if(n!=1)return 1;return 0;
+ CHECK(vkCreateSwapchainKHR(device,&info,NULL,&chain));n=3;CHECK(vkGetSwapchainImagesKHR(device,chain,&n,images));if(n<1||n>3)return 1;imageCount=n;return 0;
 }
 int WINAPI WinMain(HINSTANCE app,HINSTANCE prev,LPSTR args,int show){
  logFile=fopen("C:/DGSmoke/vortek-present.txt","w");if(!logFile)return 2;
@@ -59,7 +60,8 @@ int WINAPI WinMain(HINSTANCE app,HINSTANCE prev,LPSTR args,int show){
   pump();if(frame==18){SetWindowPos(window,NULL,0,0,820,540,SWP_NOMOVE|SWP_NOZORDER);pump();Sleep(250);}
   uint32_t index=UINT32_MAX;VkResult result=vkAcquireNextImageKHR(device,chain,UINT64_MAX,acquired,VK_NULL_HANDLE,&index);
   if(result==VK_ERROR_OUT_OF_DATE_KHR){fprintf(logFile,"resize_out_of_date=1\n");CHECK(vkDeviceWaitIdle(device));vkDestroySwapchainKHR(device,chain,NULL);if(createChain())return 1;recreated++;continue;}
-  if(result!=VK_SUCCESS||index!=0){fprintf(logFile,"acquire_error=%d index=%u\n",result,index);return 1;}
+  if(result!=VK_SUCCESS||index>=imageCount){fprintf(logFile,"acquire_error=%d index=%u\n",result,index);return 1;}
+  image=images[index];
   CHECK(vkResetCommandBuffer(command,0));VkCommandBufferBeginInfo begin={.sType=VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};CHECK(vkBeginCommandBuffer(command,&begin));
   VkImageMemoryBarrier barrier={.sType=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,.dstAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT,.oldLayout=VK_IMAGE_LAYOUT_UNDEFINED,.newLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED,.image=image,.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1}};
   vkCmdPipelineBarrier(command,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,0,0,NULL,0,NULL,1,&barrier);

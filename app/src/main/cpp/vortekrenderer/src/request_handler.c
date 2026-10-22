@@ -1999,7 +1999,7 @@ void vt_handle_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkContext* context) {
 
     VkSurfaceCapabilitiesKHR surfaceCapabilities = {0};
     surfaceCapabilities.minImageCount = getSurfaceMinImageCount();
-    surfaceCapabilities.maxImageCount = 1;
+    surfaceCapabilities.maxImageCount = 3;
     surfaceCapabilities.currentExtent = windowSize;
     surfaceCapabilities.minImageExtent = windowSize;
     surfaceCapabilities.maxImageExtent = windowSize;
@@ -2091,13 +2091,14 @@ void vt_handle_vkGetSwapchainImagesKHR(VkContext* context) {
     VkDevice device = VkObject_fromId(deviceId);
     XWindowSwapchain* swapchain = VkObject_fromId(swapchainId);
 
-    VkImage image = swapchain->images[0].image;
-    VkImage* swapchainImages = swapchainImageCount > 0 ? &image : NULL;
-    // This backend exposes exactly one image, regardless of caller capacity.
-    swapchainImageCount = 1;
+    VkImage images[3];
+    VkImage* swapchainImages = swapchainImageCount > 0 ? images : NULL;
+    VkResult result = swapchainImages && swapchainImageCount < swapchain->imageCount ? VK_INCOMPLETE : VK_SUCCESS;
+    swapchainImageCount = swapchainImages ? MIN(swapchainImageCount, swapchain->imageCount) : swapchain->imageCount;
+    for (uint32_t i = 0; swapchainImages && i < swapchainImageCount; i++) images[i] = swapchain->images[i].image;
 
     VT_SERIALIZE_CMD(vkGetSwapchainImagesKHR, NULL, VK_NULL_HANDLE, &swapchainImageCount, swapchainImages);
-    vt_send(context->clientRing, VK_SUCCESS, outputBuffer, bufferSize);
+    vt_send(context->clientRing, result, outputBuffer, bufferSize);
 
 }
 
@@ -2137,7 +2138,7 @@ void vt_handle_vkQueuePresentKHR(VkContext* context) {
     VkResult combined = VK_SUCCESS;
     for (uint32_t i = 0; i < presentInfo.swapchainCount; i++) {
         VkResult result = combined == VK_ERROR_DEVICE_LOST ? VK_ERROR_DEVICE_LOST :
-                XWindowSwapchain_presentImage((XWindowSwapchain*)presentInfo.pSwapchains[i],
+                XWindowSwapchain_presentImage((XWindowSwapchain*)presentInfo.pSwapchains[i], presentInfo.pImageIndices[i],
                     i == 0 ? presentInfo.waitSemaphoreCount : 0, presentInfo.pWaitSemaphores);
         results[i] = result;
         combined = mergePresentResult(combined, result);
