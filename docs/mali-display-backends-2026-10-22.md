@@ -6,14 +6,14 @@
 |---|---|---|
 | System Mali + wrapper | Android系统libvulkan/厂商Mali，外加Mesa的X11/WSI及格式处理 | 当前默认。固定原库有明确SPIR-V字节/字数越界，副本单样本回归已过；复杂场景仍未通过 |
 | Mali兼容层 | leegao为DXVK/VKD3D补部分缺失功能，同时有功能声明覆盖 | 已默认关闭、显式启用，预算/SM6/BC基础执行已证实；不当作AAA验收 |
-| Vortek | Winlator客户端通过共享内存/Unix socket连Android服务端；服务端用系统Vulkan和AHardwareBuffer更新窗口 | 默认关闭的可选路线。客户端/服务端与每游戏选择已集成，0.1.30构建通过，尚未实机 |
+| Vortek | Winlator客户端通过共享内存/Unix socket连Android服务端；服务端用系统Vulkan和AHardwareBuffer更新窗口 | 默认关闭的可选路线。客户端/服务端与每游戏选择已集成，0.1.31构建通过，尚未实机 |
 | Turnip | Mesa的Adreno Vulkan驱动 | 不用于Mali-G615 |
 
 来源：[Vortek主仓库](https://github.com/brunodev85/vortek)、[Winlator明确加入Mali支持的更新](https://github.com/brunodev85/winlator/releases/tag/v10.0.0)、[GameNative Mali/DX12提交](https://github.com/utkarshdalal/GameNative/commit/17da0b3)、[Mali兼容层](https://github.com/leegao/compat_layer)、[Mesa Turnip适用GPU](https://docs.mesa3d.org/drivers/freedreno.html)。
 
 本地源码对照：upstream/winlator根记录的客户端commit b1730c5def9b575672e671aee11d79ae7adc63d1，app子模块a030f552f452158a2db64fdb32b490fa19c0b48d。原始客户端178930bytes，SHA256eef892505c77fb6f3cc7bc78a151662ffb77bab934e5eeff8ead7270a6734c82。客户端/服务端serializer正规化换行后完全一致（2761a1cad4c6812004e57c210b57507800b64b28ba33824b936d9daa37461253）。GameNative旧Java接口只有(I)J，但该Winlator服务端要求(IZ)J，不能混接。
 
-目前已集成配套Bionic客户端、Android服务端、Xlib/XCB surface、每游戏回退选择与GPU专用AHB呈现，缓存及socket均在本应用目录；不依赖其他应用的私有目录。当前客户端SHA256为fed0760809cccd752e7f466890307c7eb48d9e3c4f6e92b3ca3a3650d9f6a1a6。构建来源与配套确认规则见源码准备脚本和source-lock。离线构建不等于实机显示通过。
+目前已集成配套Bionic客户端、Android服务端、Xlib/XCB surface、每游戏回退选择与GPU专用AHB呈现，缓存及socket均在本应用目录；不依赖其他应用的私有目录。当前客户端SHA256为219c72793b65df612b642afa131c4df4a9b71485caf7b5c2b63e431c5bb70e27。构建来源与配套确认规则见源码准备脚本和source-lock。离线构建不等于实机显示通过。
 
 Qt黑屏最新等待栈显示Java GLThread正常wait、XConnector在epoll；原生WSI queue没有待提交图片、event线程在condition等待，故暂没有证据证明“Present事件丢失”是该Qt会话原因。不要仅因服务端缺NotifyMSC就冒称定位成功；原库WSI源码没调用它。独立的引擎shader越界证据仍然成立。
 
@@ -39,3 +39,9 @@ LINUX DO作者的[原生移植记录](https://linux.do/t/topic/2985510)说明Mal
 客户端和服务端增加成对的QueueSubmit/2确认，序列化请求不变，但回复策略是本项目扩展，不能混用原版服务端。确认不等待GPU完成，避免拦住后续时间线信号或其他队列提交。呈现仍采用单缓冲、QueueWaitIdle与glFinish，性能未验。
 
 BC6/7、GPU生成压缩数据、BC编码读回和块视图重解释尚未实现；不伪称完整BC。对RGBA解码图像直接读回较小BC缓冲的请求会明确终止，避免越界。查询的能力与支持范围仍需实机核对。上传规则参照[Khronos VkBufferImageCopy](https://docs.vulkan.org/refpages/latest/refpages/source/VkBufferImageCopy.html)。
+
+## 0.1.31：Android缓冲格式与驱动用途
+
+旧实现枚举sRGB图像却将其直接绑定UNORM AHB，且固定AHB用途。现只枚举驱动确认可导入的RGBA8_UNORM，颜色空间仍为SRGB_NONLINEAR；先查询外部图像能力与AndroidHardwareBufferUsage，传递驱动返回的用途（含厂商位），导入时严格核对格式、尺寸、层和用途。保留原生错误码便于定位。规范依据：[AHB导入格式要求](https://docs.vulkan.org/refpages/latest/refpages/source/VkMemoryAllocateInfo.html)。
+
+表面格式/模式/图像枚举限制到调用方容量，零容量输出在客户侧返回INCOMPLETE；计数查询不再泄漏分配。单缓冲后端只声明FIFO与实际不透明合成。EGL导入使用当前display，并排除之前遗留的GL错误。仅ARM64/Java构建和签名通过，未在平板验证。

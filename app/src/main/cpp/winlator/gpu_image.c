@@ -32,7 +32,7 @@ EGLImageKHR createImageKHR(AHardwareBuffer* hardwareBuffer, int textureId) {
         return NULL;
     }
 
-    EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    EGLDisplay eglDisplay = eglGetCurrentDisplay();
     if (eglDisplay == EGL_NO_DISPLAY) {
         printf("Invalid EGLDisplay\n");
         return NULL;
@@ -44,6 +44,8 @@ EGLImageKHR createImageKHR(AHardwareBuffer* hardwareBuffer, int textureId) {
         return NULL;
     }
 
+    // An unrelated earlier GL error must not invalidate this import.
+    for (int i = 0; i < 8 && glGetError() != GL_NO_ERROR; i++) {}
     glBindTexture(GL_TEXTURE_2D, textureId);
     if (glGetError() != GL_NO_ERROR) {
         printf("Failed to bind texture\n");
@@ -84,16 +86,22 @@ AHardwareBuffer* createHardwareBuffer(int width, int height) {
 // GPU-only output storage, separate from the CPU-mapped GDI path.
 JNIEXPORT jlong JNICALL
 Java_com_winlator_cmod_renderer_GPUImage_createRenderTarget(JNIEnv *env, jobject obj,
-                                                          jshort width, jshort height, jboolean bgra) {
+                                                          jshort width, jshort height, jboolean bgra, jlong usage) {
     if (width <= 0 || height <= 0) return 0;
     AHardwareBuffer_Desc desc = {0};
     desc.width = width;
     desc.height = height;
     desc.layers = 1;
     desc.format = bgra ? HAL_PIXEL_FORMAT_BGRA_8888 : AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
-    desc.usage = AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT | AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+    desc.usage = (uint64_t)usage | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT | AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
     AHardwareBuffer* buffer = NULL;
-    return AHardwareBuffer_allocate(&desc, &buffer) == 0 ? (jlong)buffer : 0;
+    int result = AHardwareBuffer_allocate(&desc, &buffer);
+    if (result != 0) {
+        printf("GPU output AHB allocation failed: result=%d size=%ux%u format=%u usage=%llx",
+                result, desc.width, desc.height, desc.format, (unsigned long long)desc.usage);
+        return 0;
+    }
+    return (jlong)buffer;
 }
 
 JNIEXPORT jlong JNICALL

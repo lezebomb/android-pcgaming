@@ -6,16 +6,60 @@ void getWindowExtent(JMethods* jmethods, int windowId, VkExtent2D* extent) {
     extent->height = (*jmethods->env)->CallIntMethod(jmethods->env, jmethods->obj, jmethods->getWindowHeight, windowId);
 }
 
-static AHardwareBuffer* getWindowHardwareBuffer(JMethods* jmethods, int windowId, jboolean useHALPixelFormatBGRA8888) {
-    jlong hardwareBufferPtr = (*jmethods->env)->CallLongMethod(jmethods->env, jmethods->obj, jmethods->getWindowHardwareBuffer, windowId, useHALPixelFormatBGRA8888);
+static AHardwareBuffer* getWindowHardwareBuffer(JMethods* jmethods, int windowId, jboolean useHALPixelFormatBGRA8888, uint64_t usage) {
+    jlong hardwareBufferPtr = (*jmethods->env)->CallLongMethod(jmethods->env, jmethods->obj, jmethods->getWindowHardwareBuffer, windowId, useHALPixelFormatBGRA8888, (jlong)usage);
+    if ((*jmethods->env)->ExceptionCheck(jmethods->env)) {
+        (*jmethods->env)->ExceptionClear(jmethods->env);
+        return NULL;
+    }
     return (AHardwareBuffer*)hardwareBufferPtr;
 }
 
+// Resolve the allocation usage from the actual system driver, including any
+// vendor bits. sRGB color space is independent of the imported UNORM format.
+static VkResult querySurfaceImage(VkPhysicalDevice physicalDevice, VkImageUsageFlags usage,
+        VkImageFormatProperties* properties, uint64_t* androidUsage) {
+    VkPhysicalDeviceExternalImageFormatInfo external = {0};
+    external.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO;
+    external.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+    VkPhysicalDeviceImageFormatInfo2 info = {0};
+    info.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
+    info.pNext = &external;
+    info.format = VK_FORMAT_R8G8B8A8_UNORM;
+    info.type = VK_IMAGE_TYPE_2D;
+    info.tiling = VK_IMAGE_TILING_OPTIMAL;
+    info.usage = usage | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    info.flags = VK_IMAGE_CREATE_ALIAS_BIT;
+    VkAndroidHardwareBufferUsageANDROID ahbUsage = {0};
+    ahbUsage.sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID;
+    VkExternalImageFormatProperties externalProperties = {0};
+    externalProperties.sType = VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES;
+    externalProperties.pNext = &ahbUsage;
+    VkImageFormatProperties2 resultProperties = {0};
+    resultProperties.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
+    resultProperties.pNext = &externalProperties;
+    VkResult result = vulkanWrapper.vkGetPhysicalDeviceImageFormatProperties2(physicalDevice, &info, &resultProperties);
+    if (result != VK_SUCCESS) return result;
+    if (!(externalProperties.externalMemoryProperties.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT))
+        return VK_ERROR_FORMAT_NOT_SUPPORTED;
+    *properties = resultProperties.imageFormatProperties;
+    *androidUsage = ahbUsage.androidHardwareBufferUsage |
+            AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT | AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE;
+    return VK_SUCCESS;
+}
+
 static VkResult createImageMemory(VkDevice device, VkImage image, AHardwareBuffer* hardwareBuffer, VkDeviceMemory* pMemory) {
+    VkAndroidHardwareBufferFormatPropertiesANDROID format = {0};
+    format.sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID;
     VkAndroidHardwareBufferPropertiesANDROID ahbProperties = {0};
     ahbProperties.sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
+    ahbProperties.pNext = &format;
     VkResult propertiesResult = vulkanWrapper.vkGetAndroidHardwareBufferPropertiesANDROID(device, hardwareBuffer, &ahbProperties);
     if (propertiesResult != VK_SUCCESS) return propertiesResult;
+    if (format.format != VK_FORMAT_R8G8B8A8_UNORM) {
+        println("Vortek: AHB import format mismatch, requested=%d actual=%d", VK_FORMAT_R8G8B8A8_UNORM, format.format);
+        return VK_ERROR_FORMAT_NOT_SUPPORTED;
+    }
 
     VkImportAndroidHardwareBufferInfoANDROID memoryImportInfo = {0};
     memoryImportInfo.sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID;
@@ -51,12 +95,22 @@ static VkResult createImageMemory(VkDevice device, VkImage image, AHardwareBuffe
 }
 
 static VkResult createImage(VkDevice device, XWindowSwapchain* swapchain, XWindowSwapchain_Image* swapchainImage) {
-    jboolean useHALPixelFormatBGRA8888 = swapchain->imageFormat == VK_FORMAT_B8G8R8A8_UNORM || swapchain->imageFormat == VK_FORMAT_B8G8R8A8_SRGB;
-    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId, useHALPixelFormatBGRA8888);
+    VkImageFormatProperties properties = {0};
+    uint64_t usage = 0;
+    VkResult support = querySurfaceImage(swapchain->physicalDevice, swapchain->imageUsage, &properties, &usage);
+    if (support != VK_SUCCESS) return support;
+    if (swapchain->imageExtent.width > properties.maxExtent.width ||
+        swapchain->imageExtent.height > properties.maxExtent.height) return VK_ERROR_FORMAT_NOT_SUPPORTED;
+    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId, JNI_FALSE, usage);
     if (!hardwareBuffer) return VK_ERROR_SURFACE_LOST_KHR;
 
     AHardwareBuffer_Desc ahbDesc = {0};
     AHardwareBuffer_describe(hardwareBuffer, &ahbDesc);
+    if (ahbDesc.width != swapchain->imageExtent.width || ahbDesc.height != swapchain->imageExtent.height ||
+        ahbDesc.layers != 1 || ahbDesc.format != AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM || (ahbDesc.usage & usage) != usage) {
+        AHardwareBuffer_release(hardwareBuffer);
+        return VK_ERROR_FORMAT_NOT_SUPPORTED;
+    }
 
     VkExternalFormatANDROID externalFormatAndroid = {0};
     externalFormatAndroid.sType = VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID;
@@ -112,34 +166,45 @@ int getSurfaceMinImageCount() {
     return 1;
 }
 
-VkSurfaceFormatKHR* getSurfaceFormats(uint32_t* formatCount) {
-    static const VkFormat supportedFormats[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SRGB, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB};
-    int supportedFormatCount = ARRAY_SIZE(supportedFormats);
-    VkSurfaceFormatKHR* surfaceFormats = calloc(supportedFormatCount, sizeof(VkSurfaceFormatKHR));
-
-    if (formatCount) *formatCount = supportedFormatCount;
-
-    for (int i = 0; i < supportedFormatCount; i++) {
-        surfaceFormats[i].format = supportedFormats[i];
-        surfaceFormats[i].colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-    }
-
-    return surfaceFormats;
+VkResult getSurfaceFormats(VkPhysicalDevice physicalDevice, uint32_t* formatCount, VkSurfaceFormatKHR* formats) {
+    VkImageFormatProperties properties = {0};
+    uint64_t usage = 0;
+    VkResult result = querySurfaceImage(physicalDevice, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, &properties, &usage);
+    if (result != VK_SUCCESS) { *formatCount = 0; return result; }
+    if (formats && *formatCount) {
+        formats[0] = (VkSurfaceFormatKHR){VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR};
+        *formatCount = 1;
+    } else if (formats) return VK_INCOMPLETE;
+    else *formatCount = 1;
+    return VK_SUCCESS;
 }
 
-XWindowSwapchain* XWindowSwapchain_create(VkDevice device, uint32_t graphicsQueueIndex, VkSwapchainCreateInfoKHR* swapchainInfo, JMethods* jmethods, int windowId) {
+VkResult XWindowSwapchain_create(VkPhysicalDevice physicalDevice, VkDevice device, uint32_t graphicsQueueIndex, VkSwapchainCreateInfoKHR* swapchainInfo, JMethods* jmethods, int windowId, XWindowSwapchain** output) {
+    *output = NULL;
+    const VkImageUsageFlags allowed = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+    if (!physicalDevice || !swapchainInfo->imageUsage || (swapchainInfo->imageUsage & ~allowed) ||
+        swapchainInfo->presentMode != VK_PRESENT_MODE_FIFO_KHR ||
+        swapchainInfo->preTransform != VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR ||
+        swapchainInfo->compositeAlpha != VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+        return VK_ERROR_FORMAT_NOT_SUPPORTED;
     // This conservative backend exposes one independently synchronized output.
-    if (swapchainInfo->minImageCount != 1) return NULL;
+    if (swapchainInfo->minImageCount != 1 || swapchainInfo->imageArrayLayers != 1 ||
+        swapchainInfo->imageFormat != VK_FORMAT_R8G8B8A8_UNORM ||
+        swapchainInfo->imageColorSpace != VK_COLOR_SPACE_SRGB_NONLINEAR_KHR ||
+        swapchainInfo->imageSharingMode != VK_SHARING_MODE_EXCLUSIVE ||
+        swapchainInfo->flags != 0) return VK_ERROR_FORMAT_NOT_SUPPORTED;
     XWindowSwapchain* swapchain = calloc(1, sizeof(XWindowSwapchain));
-    if (!swapchain) return NULL;
+    if (!swapchain) return VK_ERROR_OUT_OF_HOST_MEMORY;
     swapchain->device = device;
+    swapchain->physicalDevice = physicalDevice;
     swapchain->queueFamily = graphicsQueueIndex;
     swapchain->windowId = windowId;
     swapchain->imageCount = swapchainInfo->minImageCount;
     swapchain->images = calloc(swapchain->imageCount, sizeof(XWindowSwapchain_Image));
-    if (!swapchain->images) { free(swapchain); return NULL; }
+    if (!swapchain->images) { free(swapchain); return VK_ERROR_OUT_OF_HOST_MEMORY; }
     swapchain->imageFormat = swapchainInfo->imageFormat;
-    swapchain->imageUsage = swapchainInfo->imageUsage;
+    swapchain->imageUsage = swapchainInfo->imageUsage | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     memcpy(&swapchain->imageExtent, &swapchainInfo->imageExtent, sizeof(VkExtent2D));
     swapchain->jmethods = jmethods;
 
@@ -166,7 +231,8 @@ XWindowSwapchain* XWindowSwapchain_create(VkDevice device, uint32_t graphicsQueu
     }
 
     vulkanWrapper.vkGetDeviceQueue(device, graphicsQueueIndex, 0, &swapchain->queue);
-    return swapchain;
+    *output = swapchain;
+    return VK_SUCCESS;
 
 error:
     for (int i = 0; i < swapchain->imageCount; i++) {
@@ -176,7 +242,7 @@ error:
     if (swapchain->transferPool) vulkanWrapper.vkDestroyCommandPool(device, swapchain->transferPool, NULL);
     MEMFREE(swapchain->images);
     MEMFREE(swapchain);
-    return NULL;
+    return result;
 }
 
 void XWindowSwapchain_destroy(VkDevice device, XWindowSwapchain* swapchain) {

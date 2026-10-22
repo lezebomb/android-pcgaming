@@ -106,7 +106,7 @@ public final class VortekRendererComponent extends EnvironmentComponent
         }
     }
 
-    @Keep private long getWindowHardwareBuffer(int id, boolean bgra) {
+    @Keep private long getWindowHardwareBuffer(int id, boolean bgra, long usage) {
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
             Window window = xServer.windowManager.getWindow(id);
             if (window == null || stopped) return 0;
@@ -121,14 +121,15 @@ public final class VortekRendererComponent extends EnvironmentComponent
                     }
                 }
                 Output output = outputs.get(id);
-                if (output != null && output.source.getGPUImage().format != (bgra ? 5 : 1)) {
+                if (output != null && (output.source.getGPUImage().format != (bgra ? 5 : 1)
+                        || !output.source.getGPUImage().supportsRenderTargetUsage(usage))) {
                     retire(output);
                     outputs.remove(id);
                     output = null;
                 }
                 if (output == null) {
                     Drawable destination = window.getContent();
-                    GPUImage image = GPUImage.createRenderTargetImage(destination.width, destination.height, bgra);
+                    GPUImage image = GPUImage.createRenderTargetImage(destination.width, destination.height, bgra, usage);
                     if (image == null) return 0;
                     output = new Output(destination, Drawable.fromGpuOutput(destination.width, destination.height, image));
                     outputs.put(id, output);

@@ -11,6 +11,7 @@ public class GPUImage extends Texture {
     private ByteBuffer virtualData;
     private boolean cpuMapped;
     private boolean renderTarget;
+    private long renderTargetUsage;
     private boolean importFailureLogged;
     private long nextImportAttemptNs;
     public short stride;
@@ -48,10 +49,11 @@ public class GPUImage extends Texture {
         }
     }
 
-    private GPUImage(short width, short height, boolean bgra) {
+    private GPUImage(short width, short height, boolean bgra, long usage) {
         // Vulkan produces this image. Permanently CPU-locking it would violate
         // producer ownership; EGL can import it without a CPU mapping.
-        hardwareBufferPtr = createRenderTarget(width, height, bgra);
+        hardwareBufferPtr = createRenderTarget(width, height, bgra, usage);
+        renderTargetUsage = usage;
         renderTarget = true;
         if (hardwareBufferPtr != 0) {
             long info = describeHardwareBuffer(hardwareBufferPtr);
@@ -60,12 +62,14 @@ public class GPUImage extends Texture {
         }
     }
 
-    public static GPUImage createRenderTargetImage(short width, short height, boolean bgra) {
-        GPUImage image = new GPUImage(width, height, bgra);
+    public static GPUImage createRenderTargetImage(short width, short height, boolean bgra, long usage) {
+        GPUImage image = new GPUImage(width, height, bgra, usage);
         return image.hardwareBufferPtr != 0 ? image : null;
     }
 
     public boolean isRenderTarget() { return renderTarget; }
+
+    public boolean supportsRenderTargetUsage(long usage) { return (renderTargetUsage & usage) == usage; }
 
     /** Caller must release this reference after Vulkan has imported it. */
     public long acquireForVulkan() {
@@ -147,7 +151,7 @@ public class GPUImage extends Texture {
     
     private native long createHardwareBuffer(short width, short height);
 
-    private native long createRenderTarget(short width, short height, boolean bgra);
+    private native long createRenderTarget(short width, short height, boolean bgra, long usage);
 
     private native long acquireHardwareBuffer(long hardwareBufferPtr);
 

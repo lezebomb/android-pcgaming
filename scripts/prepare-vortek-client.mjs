@@ -66,6 +66,18 @@ let calls=fs.readFileSync(`${root}/src/vulkan_calls.c`,'utf8').replaceAll('\r\n'
 const submitWait='bool shouldWait = RingBuffer_hasStatus(clientRing, RING_STATUS_WAIT);';
 if(calls.split(submitWait).length-1!==2)throw Error('Unexpected Vortek submit acknowledgement policy');
 calls=calls.replaceAll(submitWait,'bool shouldWait = true; // Paired Dimensity server acknowledges every submission.');
+// The original wire uses zero capacity for a count-only query. Handle an
+// explicit non-NULL zero-capacity output locally so it cannot become a query.
+for (const [name,count,items] of [
+  ['vkGetPhysicalDeviceSurfaceFormatsKHR','pSurfaceFormatCount','pSurfaceFormats'],
+  ['vkGetPhysicalDeviceSurfacePresentModesKHR','pPresentModeCount','pPresentModes'],
+  ['vkGetSwapchainImagesKHR','pSwapchainImageCount','pSwapchainImages']
+]) {
+  const signature = new RegExp('(VkResult vt_call_'+name+'\\([^\\n]*\\) \{\\n)');
+  if (!signature.test(calls)) throw Error('Unexpected enumeration entry: '+name);
+  calls=calls.replace(signature,'$1    if ('+items+' && !*'+count+') return VK_INCOMPLETE;\n');
+}
+
 const supportMarker='VkResult vt_call_vkGetPhysicalDeviceSurfaceSupportKHR(';
 if(!calls.includes(supportMarker))throw Error('Unexpected Vortek queue support entry');
 calls=calls.replace(supportMarker,`static VkBool32 vt_supportsPresentation(VkPhysicalDevice device, uint32_t family) {

@@ -119,6 +119,7 @@ void initVulkanInstance(VkContext* context, VkInstance instance, const VkApplica
 }
 
 void initVulkanDevice(VkContext* context, VkPhysicalDevice physicalDevice, VkDevice device) {
+    context->physicalDevice = physicalDevice;
     loadVulkanDeviceFuncs(&vulkanWrapper, device);
 
     uint32_t queueFamilyCount = 0;

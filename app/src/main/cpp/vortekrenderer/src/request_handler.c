@@ -2006,8 +2006,8 @@ void vt_handle_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkContext* context) {
     surfaceCapabilities.maxImageArrayLayers = 1;
     surfaceCapabilities.supportedTransforms = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     surfaceCapabilities.currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-    surfaceCapabilities.supportedCompositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR |
-                                                  VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+    // The current GL window shader always emits alpha=1.
+    surfaceCapabilities.supportedCompositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     surfaceCapabilities.supportedUsageFlags = VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
                                               VK_IMAGE_USAGE_SAMPLED_BIT |
                                               VK_IMAGE_USAGE_TRANSFER_DST_BIT |
@@ -2024,20 +2024,16 @@ void vt_handle_vkGetPhysicalDeviceSurfaceFormatsKHR(VkContext* context) {
 
     vt_unserialize_vkGetPhysicalDeviceSurfaceFormatsKHR((VkPhysicalDevice)&physicalDeviceId, NULL, &surfaceFormatCount, NULL, context->inputBuffer, &context->memoryPool);
 
-    VkSurfaceFormatKHR* surfaceFormats = surfaceFormatCount > 0 ? getSurfaceFormats(&surfaceFormatCount) : NULL;
-    if (surfaceFormatCount == 0) getSurfaceFormats(&surfaceFormatCount);
+    VkSurfaceFormatKHR format;
+    VkSurfaceFormatKHR* surfaceFormats = surfaceFormatCount > 0 ? &format : NULL;
+    VkResult result = getSurfaceFormats(VkObject_fromId(physicalDeviceId), &surfaceFormatCount, surfaceFormats);
 
     VT_SERIALIZE_CMD(vkGetPhysicalDeviceSurfaceFormatsKHR, VK_NULL_HANDLE, NULL, &surfaceFormatCount, surfaceFormats);
-    vt_send(context->clientRing, VK_SUCCESS, outputBuffer, bufferSize);
-
-    MEMFREE(surfaceFormats);
+    vt_send(context->clientRing, result, outputBuffer, bufferSize);
 }
 
 void vt_handle_vkGetPhysicalDeviceSurfacePresentModesKHR(VkContext* context) {
-    static const VkPresentModeKHR supportedPresentModes[] = {VK_PRESENT_MODE_IMMEDIATE_KHR,
-                                                             VK_PRESENT_MODE_MAILBOX_KHR,
-                                                             VK_PRESENT_MODE_FIFO_KHR,
-                                                             VK_PRESENT_MODE_FIFO_RELAXED_KHR};
+    static const VkPresentModeKHR supportedPresentModes[] = {VK_PRESENT_MODE_FIFO_KHR};
     uint64_t physicalDeviceId;
     uint32_t presentModeCount;
 
@@ -2045,6 +2041,7 @@ void vt_handle_vkGetPhysicalDeviceSurfacePresentModesKHR(VkContext* context) {
 
     VkPresentModeKHR* presentModes = presentModeCount > 0 ? supportedPresentModes : NULL;
     if (presentModeCount == 0) presentModeCount = ARRAY_SIZE(supportedPresentModes);
+    else presentModeCount = MIN(presentModeCount, ARRAY_SIZE(supportedPresentModes));
 
     VT_SERIALIZE_CMD(vkGetPhysicalDeviceSurfacePresentModesKHR, VK_NULL_HANDLE, NULL, &presentModeCount, presentModes);
     vt_send(context->clientRing, VK_SUCCESS, outputBuffer, bufferSize);
@@ -2065,8 +2062,8 @@ void vt_handle_vkCreateSwapchainKHR(VkContext* context) {
 
     XWindowSwapchain* swapchain = NULL;
     if (createInfo.imageExtent.width == windowSize.width && createInfo.imageExtent.height == windowSize.height) {
-        swapchain = XWindowSwapchain_create(device, context->graphicsQueueIndex, &createInfo, &context->jmethods, windowId);
-        if (!swapchain) result = VK_ERROR_INITIALIZATION_FAILED;
+        result = XWindowSwapchain_create(context->physicalDevice, device, context->graphicsQueueIndex, &createInfo, &context->jmethods, windowId, &swapchain);
+        if (result != VK_SUCCESS) println("Vortek: swapchain creation failed: %d format=%d usage=%x", result, createInfo.imageFormat, createInfo.imageUsage);
     }
     else result = VK_ERROR_SURFACE_LOST_KHR;
 
@@ -2094,18 +2091,14 @@ void vt_handle_vkGetSwapchainImagesKHR(VkContext* context) {
     VkDevice device = VkObject_fromId(deviceId);
     XWindowSwapchain* swapchain = VkObject_fromId(swapchainId);
 
-    VkImage* swapchainImages = swapchainImageCount > 0 ? calloc(swapchain->imageCount, sizeof(XWindowSwapchain)) : NULL;
-    if (swapchainImages) {
-        for (int i = 0; i < swapchain->imageCount; i++) {
-            swapchainImages[i] = swapchain->images[i].image;
-        }
-    }
-    else swapchainImageCount = swapchain->imageCount;
+    VkImage image = swapchain->images[0].image;
+    VkImage* swapchainImages = swapchainImageCount > 0 ? &image : NULL;
+    // This backend exposes exactly one image, regardless of caller capacity.
+    swapchainImageCount = 1;
 
     VT_SERIALIZE_CMD(vkGetSwapchainImagesKHR, NULL, VK_NULL_HANDLE, &swapchainImageCount, swapchainImages);
     vt_send(context->clientRing, VK_SUCCESS, outputBuffer, bufferSize);
 
-    MEMFREE(swapchainImages);
 }
 
 void vt_handle_vkAcquireNextImageKHR(VkContext* context) {
