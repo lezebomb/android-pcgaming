@@ -12,6 +12,7 @@ public class VertexAttribute {
     private final String name;
     private final byte itemSize;
     private boolean needsUpdate = true;
+    private int contextGeneration;
 
     public VertexAttribute(String name, int itemSize) {
         this.name = name;
@@ -28,6 +29,13 @@ public class VertexAttribute {
     }
 
     public void update() {
+        int generation = GLContextState.current();
+        if (contextGeneration != generation) {
+            bufferId = 0;
+            location = -1;
+            needsUpdate = true;
+            contextGeneration = generation;
+        }
         if (!needsUpdate || buffer == null) return;
         if (bufferId == 0) {
             int[] bufferIds = new int[1];
@@ -61,11 +69,11 @@ public class VertexAttribute {
     public void destroy() {
         clear();
 
-        if (bufferId > 0) {
+        if (bufferId > 0 && contextGeneration == GLContextState.current()) {
             int[] bufferIds = new int[]{bufferId};
             GLES20.glDeleteBuffers(bufferIds.length, bufferIds, 0);
-            bufferId = 0;
         }
+        bufferId = 0;
     }
 
     public void clear() {

@@ -18,3 +18,15 @@
 后续必须一起完成：Android服务端JNI/缓存路径移植；专用GPU输出AHB（不要永久CPU锁住GPU生产者缓冲）；Xlib/XCB surface协商与现有Wine匹配；在启动前开启服务端、退出释放；每游戏可回退选择。不能只复制旧glibc客户库到目前Bionic/FEX环境，也不能把官方声明支持Mali推成已在本平板稳定跑3A。
 
 Qt黑屏最新等待栈显示Java GLThread正常wait、XConnector在epoll；原生WSI queue没有待提交图片、event线程在condition等待，故暂没有证据证明“Present事件丢失”是该Qt会话原因。不要仅因服务端缺NotifyMSC就冒称定位成功；原库WSI源码没调用它。独立的引擎shader越界证据仍然成立。
+
+## 社区线索与本轮落地
+
+检索Reddit、LINUX DO及酷安公开索引。Reddit有相近的Mali黑屏但音频/输入继续工作反馈，未找到可复现的统一配置修复：[原始讨论](https://www.reddit.com/r/winlator/comments/1p635of/how_do_i_fix_this_black_screen_issue_on_winlator/)。同型号族的[wrapper issue143](https://github.com/leegao/bionic-vulkan-wrapper/issues/143)也报告G615黑屏，关闭状态本身不能当作本项目已有修复。酷安暂未取得可核对的公开源码方案。
+
+LINUX DO作者的[原生移植记录](https://linux.do/t/topic/2985510)说明Mali缺少相应BC格式时，需要真正解码纹理，并处理Mip及绑定状态；该记录不是Winlator/G615上的3A实测。我们据此继续核对解码与上传路径，不复制其游戏文件或原生引擎改包。另对照[wrapper开发者的Vortek分析](https://leegao.github.io/winlator-internals/2025/06/02/Vortek2.html)与当前固定源码，不能将旧分析的推断替代本版本代码。
+
+新发现[G615 PanVK开发记录](https://github.com/zenithblue-oss/panvk-kbase-android/blob/main/docs/RUN-PC-GAMES-ON-MALI.md)：其验证为DXVK Native/FL11_0，Wine、普通app加载、sync_fd权限与DX12仍列有限制。另有[MineGraph实验分支](https://github.com/MineGraph-bilibili/panvk-Android)面向G610/G615等CSF设备。当前不以“安装PanVK即可3A”作结论，不修改本机系统驱动。
+
+0.1.28已完成独立Vortek选择/私有ICD/socket、GPU输出AHB、Xlib/XCB、呈现等待及GPU拷贝；单缓冲、QueueWaitIdle、glFinish保守同步，只有离线构建和签名通过，没有实机画面与性能结论。取消每游戏开关回到原后端。源代码已上传指定仓库，二进制不上传。
+
+0.1.29正在修复另一条明确的源码缺口：Android重建GL上下文后旧资源编号失效，纹理、材质/Uniform、VBO、后处理FBO须重新创建；失败的EGL导入保留producer AHB以允许重试。Android官方说明资源会随上下文丢失而失效：[GLSurfaceView.Renderer](https://developer.android.com/reference/android/opengl/GLSurfaceView.Renderer)。这是对该恢复路径的代码修复，不能冒充此前Qt黑屏已在平板消失。

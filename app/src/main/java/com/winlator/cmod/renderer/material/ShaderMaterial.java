@@ -5,10 +5,12 @@ import android.opengl.GLES20;
 import android.util.Log;
 
 import androidx.collection.ArrayMap;
+import com.winlator.cmod.renderer.GLContextState;
 
 public class ShaderMaterial {
     public int programId;
     private final ArrayMap<String, Integer> uniforms = new ArrayMap<>();
+    private int contextGeneration;
 
     public void setUniformNames(String... names) {
         uniforms.clear();
@@ -62,6 +64,12 @@ public class ShaderMaterial {
     }
 
     public void use() {
+        int generation = GLContextState.current();
+        if (contextGeneration != generation) {
+            // Virtual destroy also clears cached locations in Window/Cursor.
+            destroy();
+            contextGeneration = generation;
+        }
         if (programId == 0) programId = compileShaders(getVertexShader(), getFragmentShader());
         GLES20.glUseProgram(programId);
 
@@ -88,10 +96,10 @@ public class ShaderMaterial {
 
 
     public void destroy() {
-        if (programId != 0) {
+        if (programId != 0 && contextGeneration == GLContextState.current()) {
             GLES20.glDeleteProgram(programId);
-            programId = 0;
         }
+        programId = 0;
         for (int i = 0; i < uniforms.size(); i++) {
             uniforms.setValueAt(i, -1);
         }

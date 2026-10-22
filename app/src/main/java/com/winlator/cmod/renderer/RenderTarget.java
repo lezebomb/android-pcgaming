@@ -8,6 +8,7 @@ public class RenderTarget extends Texture {
     private int framebuffer;
     private int width;
     private int height;
+    private int framebufferGeneration;
 
     // Constructor
     public RenderTarget() {
@@ -27,8 +28,10 @@ public class RenderTarget extends Texture {
 
     // Allocates and initializes the framebuffer and texture with the specified width and height.
     public void allocateFramebuffer(int width, int height) {
+        int generation = GLContextState.current();
+        if (framebufferGeneration != generation) framebuffer = 0;
         // Check if the framebuffer is already allocated with the same size.
-        if (framebuffer != 0 && this.width == width && this.height == height) {
+        if (framebuffer != 0 && isAllocated() && this.width == width && this.height == height) {
             return;
         }
 
@@ -41,6 +44,7 @@ public class RenderTarget extends Texture {
 
         // Generate the framebuffer if not already done.
         generateFramebuffer();
+        framebufferGeneration = generation;
 
         // Generate a texture ID using the superclass method.
         generateTextureId();
@@ -95,9 +99,9 @@ public class RenderTarget extends Texture {
     @Override
     public void destroy() {
         super.destroy();
-        if (framebuffer != 0) {
+        if (framebuffer != 0 && framebufferGeneration == GLContextState.current()) {
             GLES20.glDeleteFramebuffers(1, new int[]{framebuffer}, 0);
-            framebuffer = 0;
         }
+        framebuffer = 0;
     }
 }

@@ -27,16 +27,12 @@ public class EffectComposer {
         int height = renderer.getSurfaceHeight();
 
         if (readBuffer == null) readBuffer = new RenderTarget();
-        if (readBuffer.getWidth() != width || readBuffer.getHeight() != height) {
-            readBuffer.setFormat(GLES20.GL_RGBA);
-            readBuffer.allocateFramebuffer(width, height);
-        }
+        readBuffer.setFormat(GLES20.GL_RGBA);
+        readBuffer.allocateFramebuffer(width, height);
 
         if (writeBuffer == null) writeBuffer = new RenderTarget();
-        if (writeBuffer.getWidth() != width || writeBuffer.getHeight() != height) {
-            writeBuffer.setFormat(GLES20.GL_RGBA);
-            writeBuffer.allocateFramebuffer(width, height);
-        }
+        writeBuffer.setFormat(GLES20.GL_RGBA);
+        writeBuffer.allocateFramebuffer(width, height);
     }
 
     public synchronized void addEffect(Effect effect) {

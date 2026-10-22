@@ -19,6 +19,19 @@ public class Texture {
     protected byte unpackAlignment = 4; // or add a getter method
     private boolean flipY = false;
     private boolean swapRedBlue = false;
+    private int contextGeneration;
+
+    protected void synchronizeContext() {
+        int generation = GLContextState.current();
+        if (contextGeneration == generation) return;
+        // The old context owns these names; deleting them in a new context
+        // could delete an unrelated object that reused the same number.
+        textureId = 0;
+        needsUpdate = true;
+        flipY = false;
+        swapRedBlue = false;
+        contextGeneration = generation;
+    }
 
     public boolean isSwapRedBlue() {
         return swapRedBlue;
@@ -38,6 +51,7 @@ public class Texture {
     }
 
     public void allocateTexture(short width, short height, short stride, ByteBuffer data) {
+        synchronizeContext();
         int[] textureIds = new int[1];
         GLES20.glGenTextures(1, textureIds, 0);
         textureId = textureIds[0];
@@ -137,6 +151,7 @@ public class Texture {
     }
 
     public boolean isAllocated() {
+        synchronizeContext();
         return textureId > 0;
     }
 
@@ -209,14 +224,16 @@ public class Texture {
     }
 
     public void destroy() {
-        if (textureId > 0) {
+        if (textureId > 0 && contextGeneration == GLContextState.current()) {
             int[] textureIds = new int[]{textureId};
             GLES20.glDeleteTextures(textureIds.length, textureIds, 0);
-            textureId = 0;
         }
+        textureId = 0;
+        needsUpdate = true;
     }
 
     protected void generateTextureId() {
+        synchronizeContext();
         int[] textureIds = new int[1];
         GLES20.glGenTextures(1, textureIds, 0);
         textureId = textureIds[0];

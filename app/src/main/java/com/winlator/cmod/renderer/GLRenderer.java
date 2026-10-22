@@ -103,6 +103,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onSurfaceCreated(GL10 gl, EGLConfig config) {
+        GLContextState.created();
         presentCopyFramebuffer = 0;
         presentCopyErrorLogged = false;
         presentCopyInfoLogged = false;
@@ -119,6 +120,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             ApexNativeBridge.nativeInit(surfaceWidth, surfaceHeight);
         }
         nextRenderTimeNanos = 0;
+        markNewRealFrame();
     }
 
     @Override

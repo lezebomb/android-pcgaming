@@ -10,8 +10,8 @@ android {
         minSdk 26
         // Wine/Box64 execute in the app sandbox. See docs/architecture.md.
         targetSdk 28
-        versionCode 29
-        versionName '0.1.28-dev'
+        versionCode 30
+        versionName '0.1.29-dev'
         resValue 'string', 'app_name', 'Dimensity Gaming'
         ndk { abiFilters 'arm64-v8a' }
         externalNativeBuild { cmake { arguments '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON' } }

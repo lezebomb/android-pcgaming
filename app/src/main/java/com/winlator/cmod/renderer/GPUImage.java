@@ -11,6 +11,8 @@ public class GPUImage extends Texture {
     private ByteBuffer virtualData;
     private boolean cpuMapped;
     private boolean renderTarget;
+    private boolean importFailureLogged;
+    private long nextImportAttemptNs;
     public short stride;
     private static boolean supported = false;
 
@@ -73,15 +75,24 @@ public class GPUImage extends Texture {
     @Override
     public void allocateTexture(short width, short height, ByteBuffer data) {
         if (isAllocated()) return;
+        if (hardwareBufferPtr == 0 || System.nanoTime() < nextImportAttemptNs) return;
+        if (imageKHRPtr != 0) {
+            destroyImageKHR(imageKHRPtr);
+            imageKHRPtr = 0;
+        }
         super.allocateTexture(width, height, null);
         if (hardwareBufferPtr != 0) {
             imageKHRPtr = createImageKHR(hardwareBufferPtr, textureId);
             if (imageKHRPtr == 0) {
-                System.err.println("Error: Failed to create EGL image");
-                destroyHardwareBuffer(hardwareBufferPtr, cpuMapped);
-                cpuMapped = false;
-                virtualData = null;
-                hardwareBufferPtr = 0;
+                if (!importFailureLogged) System.err.println("EGL import failed; retaining producer AHB for retry");
+                importFailureLogged = true;
+                // A failed EGL import does not invalidate the producer's AHB.
+                // Discard the incomplete GL texture so the next frame can retry.
+                super.destroy();
+                nextImportAttemptNs = System.nanoTime() + 100_000_000L;
+            } else {
+                importFailureLogged = false;
+                nextImportAttemptNs = 0;
             }
         }
     }
