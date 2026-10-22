@@ -1,5 +1,8 @@
 // Included in the prepared guest client, after VT_CALL_LOCK/VT_CALL_UNLOCK.
 #include "dimensity_mapping.h"
+#include <errno.h>
+
+static unsigned dgMapFailureLogs;
 
 static VkResult dgUnmapMemory(MappedMemory* mapped, bool reserve) {
     if (!mapped || !mapped->mappingBase) return VK_SUCCESS;
@@ -40,13 +43,21 @@ static VkResult dgMapMemory(VkDeviceMemory memory, VkDeviceSize offset, VkDevice
     int fds[MAX_FDS], count = 0, result = VK_ERROR_MEMORY_MAP_FAILED;
     int received = recv_fds(serverFd, fds, &count, &result, sizeof(result));
     if (received != sizeof(result) || count != 1 || result != VK_SUCCESS) {
+        if (dgMapFailureLogs++ < 12)
+            __android_log_print(ANDROID_LOG_WARN, "DimensityMemory", "Guest map reply failed: bytes=%d fds=%d result=%d", received, count, result);
         for (int i = 0; i < count; i++) close(fds[i]);
         return result < 0 ? result : VK_ERROR_MEMORY_MAP_FAILED;
     }
     void* base = mmap(placedAddress, range.length, PROT_READ | PROT_WRITE,
             MAP_SHARED | (placed ? MAP_FIXED : 0), fds[0], (off_t)range.fileOffset);
+    int mapError = errno;
     close(fds[0]); // Close on mmap failure as well as success.
-    if (base == MAP_FAILED) return VK_ERROR_MEMORY_MAP_FAILED;
+    if (base == MAP_FAILED) {
+        if (dgMapFailureLogs++ < 12)
+            __android_log_print(ANDROID_LOG_WARN, "DimensityMemory", "Guest mmap failed: errno=%d offset=%llu length=%zu placed=%d",
+                    mapError, (unsigned long long)range.fileOffset, range.length, placed);
+        return VK_ERROR_MEMORY_MAP_FAILED;
+    }
     mapped->mappingBase = base;
     mapped->mappedLength = range.length;
     mapped->data = (char*)base + range.delta;

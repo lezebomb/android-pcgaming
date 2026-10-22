@@ -114,3 +114,9 @@ APK构建及v2通过，631682630bytes，SHA2560fd5ae2ed82066c4ad958a61f5676dbece
 0.1.42实机首次启动因Sarek资产找不到提前返回；发现aapt自动解开`.gz`并移除后缀。0.1.43改`.tgz`保持原包，最终APK精确entry内容SHA256等于作者包07a6d5d889e9810ce856511e853cd72d2f547ec12c0dc5d7049b32e4bfa05c25。APK641476411bytes，SHA256b87778ebe713f2be80599c4ae3fbfca567faed08d69ea376748897047a8a021e，构建/v2/保留数据安装通过。
 
 实际Sarek1.14.1启动器30秒观察期存活，WM_CLOSE后exit_code=0；真实截图仍黑，未执行3D benchmark。DXVK日志有1MiB/256bytes/16KiB内存分配失败及共享纹理格式不支持；不将无访问异常冒充完整显示修复。实机证据留本地产物目录，不上传截图/设备日志。
+
+### 0.1.44定点内存诊断
+
+APK641478271bytes，SHA25667799112265beaef29a17e57c57066668e62c825a1cd8bcac59b7a7b60f386d6，构建/v2/更新安装通过。仅复查同一Sarek启动器的当前错误，记录到type0/flags0x7分配返回VK_ERROR_INVALID_EXTERNAL_HANDLE，auto策略opaque=0/dma=1，非专用image/buffer。
+
+一次app UID原生驱动查询（vortek-memory-transport-probe.c）确认AHB BLOB4096字节仅支持typeBits0x2，即type1/flags0xb；该类型导入及native Map成功。不能把原生type0的HOST_VISIBLE/COHERENT直接当作代理跨进程可用类型，接续修正报告与分配路径。该查询没有渲染或游戏通过结论。

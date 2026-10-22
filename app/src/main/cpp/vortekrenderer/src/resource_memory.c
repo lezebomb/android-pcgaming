@@ -2,6 +2,9 @@
 #include "vulkan_helper.h"
 #include "dma_utils.h"
 #include "native_handle.h"
+#include <stdatomic.h>
+
+static atomic_uint mapFailureLogs;
 
 extern const native_handle_t* AHardwareBuffer_getNativeHandle(const AHardwareBuffer* buffer);
 extern DeviceMemoryInfo deviceMemoryInfo;
@@ -139,6 +142,15 @@ ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, con
     if (result == VK_SUCCESS) { *outResult = result; return resource; }
     ResourceMemory_free(context, device, resource);
 failed:
+    if (info && context->memoryFailureLogs++ < 12) {
+        const VkMemoryDedicatedAllocateInfo* dedicated = findNextVkStructure(info->pNext, VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO);
+        __android_log_print(ANDROID_LOG_WARN, "DimensityMemory",
+                "Allocate failed: result=%d size=%llu type=%u flags=0x%x policy=%d opaque=%d dma=%d dedicatedImage=%d dedicatedBuffer=%d",
+                result, (unsigned long long)info->allocationSize, info->memoryTypeIndex,
+                getMemoryPropertyFlags(info->memoryTypeIndex), context->resourceMemoryType,
+                context->hasExternalMemoryFd, context->hasExternalMemoryDMABuf,
+                dedicated && dedicated->image != VK_NULL_HANDLE, dedicated && dedicated->buffer != VK_NULL_HANDLE);
+    }
     *outResult = result;
     return NULL;
 }
@@ -152,6 +164,9 @@ VkResult ResourceMemory_map(ResourceMemory* resource) {
     void* data = NULL;
     VkResult result = vulkanWrapper.vkMapMemory(resource->device, resource->memory, 0, VK_WHOLE_SIZE, 0, &data);
     if (result == VK_SUCCESS) resource->hostMapped = true;
+    else if (atomic_fetch_add(&mapFailureLogs, 1) < 12)
+        __android_log_print(ANDROID_LOG_WARN, "DimensityMemory", "Native map failed: result=%d size=%llu ahb=%d",
+                result, (unsigned long long)resource->allocationSize, resource->hardwareBuffer != NULL);
     return result;
 }
 

@@ -16,6 +16,7 @@ typedef struct VkContext {
     ArrayList* exposedDeviceExtensions;
     ArrayList* disabledDeviceExtensions;
     uint64_t totalAllocationSize;
+    uint32_t memoryFailureLogs;
 
     bool hasExternalMemoryFd;
     bool hasExternalMemoryDMABuf;
