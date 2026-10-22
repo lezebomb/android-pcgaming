@@ -43,10 +43,11 @@ public class BCNConfigDialog extends ContentDialog {
         HashMap<String, String> config = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(graphicsDriverConfig);
 
         selectedBCnEmulation = config.getOrDefault("bcnEmulation", "auto");
-        selectedBCnEmulationType = config.getOrDefault("bcnEmulationType", "compute");
+        selectedBCnEmulationType = config.getOrDefault("bcnEmulationType", "software");
+        if ("cpu".equals(selectedBCnEmulationType)) selectedBCnEmulationType = "software";
         isBCnCacheEnabled = config.getOrDefault("bcnEmulationCache", "1");
         selectedBCnQualityPreset = config.getOrDefault("bcnQualityPreset", "auto");
-        isASTCTranscode = config.getOrDefault("astcTranscode", "1");
+        isASTCTranscode = config.getOrDefault("astcTranscode", "0");
         isETC2Transcode = config.getOrDefault("etc2Transcode", "0");
 
         AppUtils.setSpinnerSelectionFromValue(sBCnEmulation, selectedBCnEmulation);
@@ -194,8 +195,8 @@ public class BCNConfigDialog extends ContentDialog {
         TextView tvMessage = dialog.findViewById(R.id.TVInfoMessage);
         String message = "<b>BCn Shader Quality</b><br/><br/>" +
                 "<b>In-Game Visual &amp; Performance Effect:</b><br/><br/>" +
-                "&#8226; <b>auto:</b> Auto-selects <b>fast</b> on budget mobile GPUs, <b>high</b> on high-end GPUs.<br/><br/>" +
-                "&#8226; <b>fast:</b> <b>Highest Framerate &amp; Zero Camera Pan Stutters.</b> Executes 4x faster on the GPU to eliminate frame spikes during heavy action or looking around.<br/><br/>" +
+                "&#8226; <b>auto:</b> Uses the installed layer's hardware-dependent selection.<br/><br/>" +
+                "&#8226; <b>fast:</b> Prioritizes encoding speed over color precision. Loading time, frame rate and stutter still depend on the game and driver.<br/><br/>" +
                 "&#8226; <b>balanced:</b> Medium GPU processing speed with balanced color accuracy.<br/><br/>" +
                 "&#8226; <b>high:</b> Maximum color precision for smooth dark shadow transitions.";
         tvMessage.setText(android.text.Html.fromHtml(message, android.text.Html.FROM_HTML_MODE_LEGACY));
@@ -212,14 +213,14 @@ public class BCNConfigDialog extends ContentDialog {
         String message = "<b>BCN Emulation &amp; Transcoding</b><br/><br/>" +
                 "These settings utilize a custom <b>leegao BCN layer</b> to handle BCN (BC1-BC7) textures on mobile GPUs.<br/><br/>" +
                 "<b>Emulation:</b><br/>" +
-                "Controls how the layer handles compressed textures. <b>Compute</b> mode uses GPU shaders for better performance, while <b>Software</b> mode is a fallback.<br/><br/>" +
+                "<b>Compute</b> uses GPU shaders; <b>Software</b> uses CPU decoding. Compare image correctness and loading behavior on your device.<br/><br/>" +
                 "<b>Transcoding:</b><br/>" +
-                "Directly transcodes BCN textures into <b>ASTC</b> or <b>ETC2</b> formats natively supported by mobile GPUs. This significantly reduces VRAM usage (up to 4x) compared to raw decompression.<br/><br/>" +
+                "Can keep eligible textures compressed as <b>ASTC</b> or <b>ETC2</b> when the device and layer support that route. Actual memory savings vary by texture format and workload.<br/><br/>" +
                 "<b>Trade-offs:</b><br/>" +
                 "Transcoding can slightly reduce visual quality. <b>ETC2</b> generally offers lower quality, while <b>ASTC</b> maintains high quality closer to the original.<br/><br/>" +
                 "<b>Benefits:</b><br/>" +
                 "&#8226; <b>VRAM Savings:</b> Keeps textures compressed in GPU memory.<br/>" +
-                "&#8226; <b>Stability:</b> Prevents out-of-memory crashes in texture-heavy games.<br/><br/>" +
+                "&#8226; <b>Memory pressure:</b> May reduce allocation pressure; this does not guarantee stability or prevent every out-of-memory failure.<br/><br/>" +
                 "<b>Skip Compression on Small Textures:</b><br/>" +
                 "Avoids compressing low-resolution textures (like icons or UI elements) to prevent them from looking pixelated or blurry. This will slightly increase VRAM usage.<br/><br/>" +
                 "<i>Note: Transcoding and Skip Compression require Compute Emulation mode.</i>";

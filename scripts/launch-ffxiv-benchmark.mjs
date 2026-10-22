@@ -13,6 +13,9 @@ const rendererArgument=process.argv.filter(value=>value.startsWith('--wined3d-re
 if(rendererArgument.length>1)throw new Error('Choose one WineD3D auxiliary renderer.');
 const renderer=rendererArgument[0]?.split('=')[1];
 if(renderer&&!['gl','vulkan','gdi'].includes(renderer))throw new Error('Expected gl, vulkan or gdi.');
+const astc=process.argv.includes('--astc-textures');
+const compute=astc||process.argv.includes('--compute-textures');
+const graphicsConfig=compute?'vulkanVersion=1.3;version=System;blacklistedExtensions=;maxDeviceMemory=0;presentMode=fifo;syncFrame=0;disablePresentWait=0;astcTranscode='+Number(astc)+';etc2Transcode=0;resourceType=auto;bcnEmulation=auto;bcnEmulationType=compute;bcnEmulationCache=1;bcnQualityPreset=fast;gpuName=Device':'';
 const executable=diagnostic?'C:/DGSmoke/DG-FFXIVLaunch.exe':engine?
   'C:/Games/DGFFXIVBench/game/ffxiv_dx11.exe':'C:/Games/DGFFXIVBench/ffxiv-dawntrail-bench.exe';
 // Public option names: doitsujin/ffxiv-benchmark-launcher, ffxiv-benchmark.py.
@@ -42,7 +45,8 @@ ${engine?'execArgs='+(diagnostic?'--engine ':'')+engineArguments+'\n':''}\
 workingDirectory=C:/Games/DGFFXIVBench
 screenSize=${process.argv.includes('--tall-desktop')?'1280x960':'1280x800'}
 dxwrapper=dxvk
-dxwrapperConfig=version=1.14.1-sarek,framerate=30,async=0,asyncCache=0,vkd3dVersion=None,vkd3dLevel=auto,maliCompat=1,ddrawrapper=none,dxvkConfig=1
+${compute?'graphicsDriverConfig='+graphicsConfig+'\n':''}\
+dxwrapperConfig=version=1.14.1-sarek,framerate=30,async=0,asyncCache=0,vkd3dVersion=None,vkd3dLevel=auto,maliCompat=${process.argv.includes('--without-mali-layer')?'0':'1'},ddrawrapper=none,dxvkConfig=1
 envVars=WINEDEBUG=${diagnostic?'+seh,+loaddll':'-all'} DXVK_LOG_LEVEL=info DXVK_LOG_PATH=C:/Games/DGFFXIVBench${renderer?' WINE_D3D_CONFIG=renderer='+renderer:''}
 controlsProfile=${process.argv.includes('--mapped-controls')?'1000':'0'}
 ${process.argv.includes('--legacy-query')?'legacyGraphicsQuery=gdi\n':''}\

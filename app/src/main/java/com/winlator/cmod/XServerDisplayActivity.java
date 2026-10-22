@@ -2319,6 +2319,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         String astcTranscode = graphicsDriverConfig.get("astcTranscode");
         String etc2Transcode = graphicsDriverConfig.get("etc2Transcode");
         boolean transcodeEnabled = "1".equals(astcTranscode) || "1".equals(etc2Transcode);
+        boolean computeBcnEnabled = "compute".equals(graphicsDriverConfig.get("bcnEmulationType"))
+                && GPUInformation.getVendorID(null, null) != 0x5143
+                && ("auto".equals(graphicsDriverConfig.get("bcnEmulation"))
+                    || "full".equals(graphicsDriverConfig.get("bcnEmulation")));
 
         File libDir = new File(rootDir, "usr/lib");
         File gladioLib = new File(libDir, "libGL.so.1.7.0");
@@ -2338,7 +2342,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             if (internalExtraLibs.exists()) TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, internalExtraLibs, rootDir);
             else TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs.tzst", rootDir);
 
-            if (transcodeEnabled) {
+            if (transcodeEnabled || computeBcnEnabled) {
                 File internalLeegaoBcn = new File(getFilesDir(), "graphics_driver/leegao_bcn.tzst");
                 if (internalLeegaoBcn.exists()) TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, internalLeegaoBcn, rootDir);
                 else TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/leegao_bcn.tzst", rootDir);
@@ -2352,7 +2356,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 if (internalExtraLibs.exists()) TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, internalExtraLibs, rootDir);
                 else TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs.tzst", rootDir);
 
-                if (transcodeEnabled) {
+                if (transcodeEnabled || computeBcnEnabled) {
                     File internalLeegaoBcn = new File(getFilesDir(), "graphics_driver/leegao_bcn.tzst");
                     if (internalLeegaoBcn.exists()) TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, internalLeegaoBcn, rootDir);
                     else TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/leegao_bcn.tzst", rootDir);
@@ -2360,6 +2364,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 container.putExtra("transcodeEnabled", transcodeEnabled ? "1" : "0");
                 container.saveData();
             }
+        }
+
+        // Compute-only decoding also needs the implicit layer. A prefix may have
+        // completed first boot with CPU decoding, without ever enabling transcode.
+        if (computeBcnEnabled && (!new File(libDir, "libbcn_layer.so").isFile()
+                || !new File(rootDir, "usr/share/vulkan/implicit_layer.d/libbcn_layer.json").isFile())) {
+            File internalLeegaoBcn = new File(getFilesDir(), "graphics_driver/leegao_bcn.tzst");
+            if (internalLeegaoBcn.exists()) TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, internalLeegaoBcn, rootDir);
+            else TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/leegao_bcn.tzst", rootDir);
         }
 
         if (!"System".equals(adrenoToolsDriverId) && GPUInformation.isAdrenoGPU(this)) {
