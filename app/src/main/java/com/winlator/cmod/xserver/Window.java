@@ -22,7 +22,8 @@ public class Window extends XResource {
     public enum StackMode {ABOVE, BELOW, TOP_IF, BOTTOM_IF, OPPOSITE}
     public enum MapState {UNMAPPED, UNVIEWABLE, VIEWABLE}
     public enum WMHints {FLAGS, INPUT, INITIAL_STATE, ICON_PIXMAP, ICON_WINDOW, ICON_X, ICON_Y, ICON_MASK, WINDOW_GROUP}
-    private Drawable content;
+    // GL copy jobs check resize identity without taking the window-manager lock.
+    private volatile Drawable content;
     private short x;
     private short y;
     private short width;

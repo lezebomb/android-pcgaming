@@ -85,3 +85,9 @@ SPIR-V增加零长度/越界指令及所读取操作数的界限检查，OpName�
 系统可能枚举VK_KHR_get_surface_capabilities2，但原client缺两个对应入口。现用本后端已实现的表面能力/格式查询补齐，保持调用方sType/pNext，正确处理容量和INCOMPLETE；不把X11 window id传给Android driver当surface。统一屏蔽未实现的present-wait/id、display-timing、HDR/维护/可变格式与原生平台surface、debug callback等扩展，防止枚举有功能但调用无入口。Swapchain销毁前等待本后端内部ownership命令结束。
 
 依据：[Acquire2状态](https://docs.vulkan.org/refpages/latest/refpages/source/vkAcquireNextImage2KHR.html)、[格式查询2容量语义](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetPhysicalDeviceSurfaceFormats2KHR.html)。一次离线产品适配器短查vortek_wsi_result=0，覆盖容量/结构头、超时不改index与屏蔽范围。ARM64两端编译通过；实机效果仍未知。
+
+### 0.1.41离线显示恢复
+
+GPUImage原有100ms导入退避，却被Vortek首次失败直接转为DEVICE_LOST，无法利用重试。现在GL线程返回明确结果，只有有效AHB且尚无可用纹理时才重试，保持FOREIGN所有权到实际拷贝完成；750ms内仍不可用则终止会话。排队超过1秒可取消，已经运行的拷贝不取消、不允许生产者复用，5秒上限仍保留。
+
+窗口输出使用原目标drawable，避免预检查与入队间resize导致旧AHB拷进新窗口；目标身份变化返回OUT_OF_DATE，不冒充GPU丢失。窗口content用volatile保证GL线程看到变更。失败拷贝不再算成功帧，glFinish后的错误也纳入结果。只完成离线构建，未确认实机恢复或稳定性。

@@ -423,8 +423,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     public void copyPresentedPixmap(Window window, Drawable source, int x, int y, Runnable completed) {
-        queueGpuCopy(window, source, x, y, true, copied -> completed.run(), null);
+        queueGpuCopy(window, window.getContent(), source, x, y, true, result -> completed.run(), null);
     }
+
+    public enum GpuCopyResult { COPIED, RETRY_IMPORT, OUT_OF_DATE, CANCELLED, FAILED }
 
     /** A queued copy can be cancelled only before it starts touching GPU state. */
     public static final class GpuCopyRequest {
@@ -434,14 +436,15 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         private void finish() { state.compareAndSet(1, 2); }
     }
 
-    public GpuCopyRequest copyVulkanFrame(Window window, Drawable source, java.util.function.Consumer<Boolean> completed) {
+    public GpuCopyRequest copyVulkanFrame(Window window, Drawable destination, Drawable source,
+                                           java.util.function.Consumer<GpuCopyResult> completed) {
         GpuCopyRequest request = new GpuCopyRequest();
-        queueGpuCopy(window, source, 0, 0, false, completed, request);
+        queueGpuCopy(window, destination, source, 0, 0, false, completed, request);
         return request;
     }
 
-    private void queueGpuCopy(Window window, Drawable source, int x, int y, boolean x11BgraBytes,
-                              java.util.function.Consumer<Boolean> completed, GpuCopyRequest request) {
+    private void queueGpuCopy(Window window, Drawable destination, Drawable source, int x, int y, boolean x11BgraBytes,
+                              java.util.function.Consumer<GpuCopyResult> completed, GpuCopyRequest request) {
         final int copyNumber = ++presentCopyRequests;
         if (BuildConfig.DEBUG && copyNumber == 1) {
             xServerView.postDelayed(() -> {
@@ -461,35 +464,48 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                 }
             }, 10000);
         }
-        final Drawable destination = window.getContent();
         xServerView.queueEvent(() -> {
-            boolean copied = false;
+            GpuCopyResult result = GpuCopyResult.FAILED;
             try (XLock ignored = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
-                if (request != null && !request.begin()) return;
-                if (window.getContent() != destination) return;
+                if (request != null && !request.begin()) {
+                    result = GpuCopyResult.CANCELLED;
+                    return;
+                }
+                if (window.getContent() != destination) {
+                    result = GpuCopyResult.OUT_OF_DATE;
+                    return;
+                }
                 synchronized (destination.renderLock) {
                     if (presentCopyFramebuffer == 0) {
                         int[] ids = new int[1];
                         GLES20.glGenFramebuffers(1, ids, 0);
                         presentCopyFramebuffer = ids[0];
                     }
-                    copied = destination.getTexture().copyFromGpuDrawable(
+                    boolean copied = destination.getTexture().copyFromGpuDrawable(
                             destination, source, x, y, presentCopyFramebuffer, x11BgraBytes);
                     if (copied && !presentCopyInfoLogged) {
                         presentCopyInfoLogged = true;
                         Log.i("DimensityPresent", "GPU copy: AHB format=" + source.getGPUImage().format
                                 + " swapRedBlue=" + destination.getTexture().isSwapRedBlue());
                     }
-                    if (!copied && !presentCopyErrorLogged) {
+                    Texture sourceTexture = source.getTexture();
+                    // No GL read was issued when the AHB import failed. Keep
+                    // producer ownership with the caller while it retries.
+                    boolean retryImport = !copied && sourceTexture instanceof GPUImage
+                            && ((GPUImage)sourceTexture).hardwareBufferPtr != 0 && !sourceTexture.isAllocated();
+                    result = copied ? GpuCopyResult.COPIED
+                            : retryImport ? GpuCopyResult.RETRY_IMPORT : GpuCopyResult.FAILED;
+                    if (result == GpuCopyResult.FAILED && !presentCopyErrorLogged) {
                         presentCopyErrorLogged = true;
                         Log.e("DimensityPresent", "AHB GPU copy failed; framebuffer/image compatibility requires inspection");
                     }
                 }
-                markNewRealFrame();
+                if (window.getContent() != destination) result = GpuCopyResult.OUT_OF_DATE;
+                if (result == GpuCopyResult.COPIED) markNewRealFrame();
             } finally {
-                if (copyNumber <= 3) Log.i("DimensityPresent", "GPU copy completed: " + copyNumber);
+                if (copyNumber <= 3) Log.i("DimensityPresent", "GPU copy completed: " + copyNumber + " result=" + result);
                 if (request != null) request.finish();
-                completed.accept(copied);
+                completed.accept(result);
                 if (copyNumber <= 3) Log.i("DimensityPresent", "Present completion sent: " + copyNumber);
             }
         });

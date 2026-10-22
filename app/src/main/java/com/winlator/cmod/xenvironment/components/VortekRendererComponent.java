@@ -24,7 +24,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Experimental, explicitly selected per game; uses an independent GPU output. */
 public final class VortekRendererComponent extends EnvironmentComponent
@@ -167,37 +167,76 @@ public final class VortekRendererComponent extends EnvironmentComponent
             if (window == null) return VK_ERROR_SURFACE_LOST_KHR;
             if (output == null || window.getContent() != output.destination) return VK_ERROR_OUT_OF_DATE_KHR;
         }
-        CountDownLatch done = new CountDownLatch(1);
-        AtomicBoolean copied = new AtomicBoolean();
-        GLRenderer.GpuCopyRequest request = xServer.getRenderer().copyVulkanFrame(window, output.source, success -> {
-            copied.set(success);
-            done.countDown();
-        });
-        long start = System.nanoTime();
+        long importDeadline = 0;
         try {
-            while (!done.await(50, TimeUnit.MILLISECONDS)) {
-                if (stopped) {
-                    request.cancelBeforeStart();
-                    return VK_ERROR_DEVICE_LOST;
+            while (true) {
+                // Revalidate between retries; a resize must rebuild this output,
+                // never copy its old-size AHB into the replacement drawable.
+                try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
+                    if (stopped) return VK_ERROR_DEVICE_LOST;
+                    if (xServer.windowManager.getWindow(id) != window) return VK_ERROR_SURFACE_LOST_KHR;
+                    synchronized (outputs) {
+                        if (outputs.get(key) != output || window.getContent() != output.destination)
+                            return VK_ERROR_OUT_OF_DATE_KHR;
+                    }
                 }
-                long elapsed = System.nanoTime() - start;
-                // A paused surface must not leave a delayed copy reading a
-                // producer buffer after it has been reacquired and overwritten.
-                if (elapsed > TimeUnit.SECONDS.toNanos(1) && request.cancelBeforeStart())
-                    return VK_ERROR_OUT_OF_DATE_KHR;
-                // A copy already running cannot be cancelled safely. A stuck
-                // GPU ends this device session, preventing buffer reuse.
-                if (elapsed > TimeUnit.SECONDS.toNanos(5)) return VK_ERROR_DEVICE_LOST;
+                CountDownLatch done = new CountDownLatch(1);
+                AtomicReference<GLRenderer.GpuCopyResult> result = new AtomicReference<>(GLRenderer.GpuCopyResult.FAILED);
+                GLRenderer.GpuCopyRequest request = xServer.getRenderer().copyVulkanFrame(
+                        window, output.destination, output.source, copied -> {
+                            result.set(copied);
+                            done.countDown();
+                        });
+                long start = System.nanoTime();
+                try {
+                    while (!done.await(50, TimeUnit.MILLISECONDS)) {
+                        if (stopped) {
+                            request.cancelBeforeStart();
+                            return VK_ERROR_DEVICE_LOST;
+                        }
+                        long elapsed = System.nanoTime() - start;
+                        // Do not let a paused, queued read run after producer reuse.
+                        if (elapsed > TimeUnit.SECONDS.toNanos(1) && request.cancelBeforeStart())
+                            return VK_ERROR_OUT_OF_DATE_KHR;
+                        // A running copy cannot be cancelled. A stuck GPU ends
+                        // this session, preventing reuse of its in-flight AHB.
+                        if (elapsed > TimeUnit.SECONDS.toNanos(5)) return VK_ERROR_DEVICE_LOST;
+                    }
+                } catch (InterruptedException interrupted) {
+                    request.cancelBeforeStart();
+                    throw interrupted;
+                }
+                switch (result.get()) {
+                    case COPIED:
+                        if (++copiedFrames == 1)
+                            Log.i("DimensityVortek", "First GPU frame copied and completed; gameplay not yet validated");
+                        return VK_SUCCESS;
+                    case OUT_OF_DATE:
+                    case CANCELLED:
+                        return VK_ERROR_OUT_OF_DATE_KHR;
+                    case RETRY_IMPORT:
+                        // GPUImage keeps a valid AHB and backs off failed EGL
+                        // imports. Hold FOREIGN ownership until a copy completes;
+                        // never report a successful present of an uncopied frame.
+                        long now = System.nanoTime();
+                        if (importDeadline == 0) {
+                            importDeadline = now + TimeUnit.MILLISECONDS.toNanos(750);
+                            Log.i("DimensityVortek", "Retrying transient EGL import without releasing producer AHB");
+                        }
+                        if (now >= importDeadline) {
+                            Log.e("DimensityVortek", "EGL import remained unavailable; ending this device session");
+                            return VK_ERROR_DEVICE_LOST;
+                        }
+                        TimeUnit.MILLISECONDS.sleep(100);
+                        break;
+                    default:
+                        return VK_ERROR_DEVICE_LOST;
+                }
             }
         } catch (InterruptedException interrupted) {
-            request.cancelBeforeStart();
             Thread.currentThread().interrupt();
             return VK_ERROR_DEVICE_LOST;
         }
-        if (!copied.get()) return VK_ERROR_DEVICE_LOST;
-        if (++copiedFrames == 1)
-            Log.i("DimensityVortek", "First GPU frame copied and completed; gameplay not yet validated");
-        return VK_SUCCESS;
     }
 
     @Override public void handleNewConnection(Client client) { client.createIOStreams(); }

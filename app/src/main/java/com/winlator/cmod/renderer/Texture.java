@@ -172,8 +172,10 @@ public class Texture {
         for (int i = 0; i < 8 && GLES20.glGetError() != GLES20.GL_NO_ERROR; i++) {}
         Texture sourceTexture = source.getTexture();
         sourceTexture.updateFromDrawable(source);
+        if (!sourceTexture.isAllocated()) return false;
         if (sourceTexture instanceof GPUImage && ((GPUImage) sourceTexture).hardwareBufferPtr == 0) return false;
         updateFromDrawable(destination);
+        if (!isAllocated()) return false;
         int[] previous = new int[1];
         android.opengl.GLES30.glGetIntegerv(android.opengl.GLES30.GL_READ_FRAMEBUFFER_BINDING, previous, 0);
         android.opengl.GLES30.glBindFramebuffer(android.opengl.GLES30.GL_READ_FRAMEBUFFER, framebuffer);
@@ -192,7 +194,7 @@ public class Texture {
             // PresentIdle permits the producer to reuse its buffer. Complete the
             // copy before releasing that buffer; the destination belongs to us.
             GLES20.glFinish();
-            return true;
+            return GLES20.glGetError() == GLES20.GL_NO_ERROR;
         } finally {
             android.opengl.GLES30.glFramebufferTexture2D(android.opengl.GLES30.GL_READ_FRAMEBUFFER,
                     GLES20.GL_COLOR_ATTACHMENT0, GLES20.GL_TEXTURE_2D, 0, 0);
