@@ -4,6 +4,7 @@
 #include <wchar.h>
 static FILE *output;
 static DWORD game_pid;
+static HWND browser_window;
 static HWND wine_dialog, game_window;
 static BOOL CALLBACK close_wine_link(HWND window, LPARAM unused) {
     (void)unused;
@@ -16,11 +17,23 @@ static BOOL CALLBACK close_wine_link(HWND window, LPARAM unused) {
         if (QueryFullProcessImageNameW(process, 0, image, &size)) {
             const wchar_t *name = wcsrchr(image, L'\\');
             if (name && _wcsicmp(name + 1, L"iexplore.exe") == 0) {
+                browser_window = window;
                 fprintf(output, "close_wine_information_link=%d\n", PostMessageW(window, WM_CLOSE, 0, 0));
             }
         }
         CloseHandle(process);
     }
+    return TRUE;
+}
+static BOOL CALLBACK cancel_browser_installer(HWND window, LPARAM unused) {
+    (void)unused;
+    wchar_t title[128]={0}; GetWindowTextW(window,title,128);
+    DWORD pid=0,browser_pid=0;
+    GetWindowThreadProcessId(window,&pid);
+    if (browser_window) GetWindowThreadProcessId(browser_window,&browser_pid);
+    if (browser_window && (GetWindow(window,GW_OWNER)==browser_window || pid==browser_pid) &&
+        wcscmp(title,L"Wine Gecko Installer")==0)
+        PostMessageW(window,WM_COMMAND,IDCANCEL,0);
     return TRUE;
 }
 static void text(const char *name, const wchar_t *value) {
@@ -54,10 +67,12 @@ static BOOL CALLBACK enumerate(HWND window, LPARAM close_game) {
     return TRUE;
 }
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR command, int show) {
-    (void)instance; (void)previous; (void)command; (void)show;
+    (void)instance; (void)previous; (void)show;
     output = fopen("C:/DGSmoke/warzone-dialog.txt", "w");
     if (!output) return 2;
-    char arguments[1024] = "\"C:\\Games\\DGCompat\\Warzone\\bin\\warzone2100.exe\" --gfxbackend=vulkan --window --resolution=960x600 --configdir=C:/Games/DGCompat/Warzone/profile --debug=main --debugfile=C:/Games/DGCompat/Warzone/profile/logs/dimensity-dialog-run.log";
+    char arguments[1024];
+    snprintf(arguments,sizeof(arguments),"\"C:\\Games\\DGCompat\\Warzone\\bin\\warzone2100.exe\" --gfxbackend=%s --window --resolution=960x600 --configdir=C:/Games/DGCompat/Warzone/profile --debug=main --debugfile=C:/Games/DGCompat/Warzone/profile/logs/dimensity-dialog-run.log",
+        strstr(command,"--directx") ? "directx" : "vulkan");
 #ifdef DG_WARZONE_CAMPAIGN
     strcat(arguments, " --game=CAM_1A");
 #endif
@@ -98,10 +113,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previous, LPSTR command, int sh
     }
 #ifdef DG_WARZONE_PLAY
     fprintf(output, "interactive_ready=1\n"); fflush(output);
-    DWORD deadline = GetTickCount() + 180000;
+    DWORD deadline = GetTickCount() + (strstr(command,"--long-play") ? 480000 : 180000);
     while ((LONG)(deadline - GetTickCount()) > 0 &&
             GetFileAttributesA("C:/DGSmoke/warzone-play.stop") == INVALID_FILE_ATTRIBUTES &&
-            WaitForSingleObject(game.hProcess, 0) != WAIT_OBJECT_0) Sleep(250);
+            WaitForSingleObject(game.hProcess, 0) != WAIT_OBJECT_0) {
+        Sleep(250);
+        EnumWindows(close_wine_link,0);
+        EnumWindows(cancel_browser_installer,0);
+    }
 #elif defined(DG_WARZONE_CAMPAIGN)
     Sleep(60000);
 #else

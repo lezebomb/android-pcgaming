@@ -140,3 +140,11 @@ ARM64 Mali层、APK构建及v2验签通过；APK641480751bytes，SHA256579bc8bd7
 修正SetInputFocus把revert-to误当目标窗口的源码错误，实际目标0/1/window独立解析，保留PointerRoot特殊回包及祖先取消映射后的回退。依据[X11协议SetInputFocus](https://www.x.org/releases/X11R7.7/doc/xproto/x11protocol.html)。本改动尚未补齐全部FocusIn/Out及时间戳语义。
 
 APK构建/v2/保留数据安装通过；641480799bytes，SHA25675c22809574662ba7ac8c2b848f3be601ff288cdab430e56d51d2c8bf974fde2。同一Superposition低预设短查仍约90秒加载后立即stopped/quit；新增窗口记录确认引擎在退出前一直foreground=1，没有3D通过。不把协议错误修正宣称为退出根因或图形修复完成。
+
+### 0.1.48真实游戏点击与移动
+
+修正X11 ButtonPress/Release的state字段误用事件订阅掩码，避免PointerMotion位被当成Mod4；按键状态按事件发生前构造，Release按BUTTON_RELEASE订阅投递。APK构建/v2/保留数据安装通过，641480807bytes，SHA256c0539bf1de8f367d82ee778d707594e80633b5cbfa1a00438de7179c153993d9。
+
+在同机Warzone第一关进行必要对应复查：原wrapper、游戏DirectX后端（ANGLE OpenGL ES→D3D11→DXVK1.10.3）实际显示地形、车辆、HUD。此前0.1.47同路径已能选取但点击后取消选取；本次虚拟手柄LB+LS映射Ctrl+U选7单位，左摇杆定位后A映射左键下令，前后截图确认7辆车由分散起始位置移动到目标点，并保持选中。HUD采样约30FPS，不作为校准的帧时间或长稳结论，也不是3A验收。
+
+测试助手默认仍3分钟；显式--long-play给单个真实操作会话最多8分钟，可用原stop文件提前结束。--directx明确选择游戏现成后端；只关闭本Wine会话已核对身份的附带信息浏览器及其Gecko提示，不安装浏览器、不改Android其他应用。
