@@ -60,3 +60,11 @@ and formats2 adapt the proxy queries; unsupported native WSI/debug callback
 extensions are filtered from guest enumeration. Native Android surface handles
 are never substituted for X11 window ids. Swapchain teardown waits for its
 internal ownership commands before releasing images and the command pool.
+
+Protocol v6 carries the caller queue with the original present-info request.
+A single native submit waits once for the whole batch and releases all prepared
+images to FOREIGN on that queue. One completion wait precedes every GL read.
+Recoverable surface errors remain per-swapchain, including all-rejected batches
+whose semaphore waits must still execute. Allocation failure before submission
+leaves acquired images and semaphore payloads unchanged; completion failure
+after submission ends the device session to prevent unsafe buffer reuse.

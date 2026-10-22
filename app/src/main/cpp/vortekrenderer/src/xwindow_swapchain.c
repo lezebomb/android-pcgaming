@@ -329,29 +329,18 @@ VkResult XWindowSwapchain_acquireNextImage(XWindowSwapchain* swapchain, uint64_t
     return VK_SUCCESS;
 }
 
-VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t imageIndex, uint32_t waitCount, const VkSemaphore* waits) {
+VkResult XWindowSwapchain_preparePresent(XWindowSwapchain* swapchain, uint32_t imageIndex, VkCommandBuffer* command) {
     if (imageIndex >= swapchain->imageCount) return VK_ERROR_OUT_OF_DATE_KHR;
     XWindowSwapchain_Image* target = &swapchain->images[imageIndex];
     if (!target->acquired) return VK_ERROR_OUT_OF_DATE_KHR;
     VkResult result = recordOwnershipTransfer(swapchain, imageIndex, false);
-    if (result != VK_SUCCESS) return result;
-    VkPipelineStageFlags* stages = waitCount ? calloc(waitCount, sizeof(VkPipelineStageFlags)) : NULL;
-    if (waitCount && !stages) return VK_ERROR_OUT_OF_HOST_MEMORY;
-    for (uint32_t i = 0; i < waitCount; i++) stages[i] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-    VkSubmitInfo submit = {0};
-    submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit.waitSemaphoreCount = waitCount;
-    submit.pWaitSemaphores = waits;
-    submit.pWaitDstStageMask = stages;
-    submit.commandBufferCount = 1;
-    submit.pCommandBuffers = &target->releaseCommand;
-    result = vulkanWrapper.vkQueueSubmit(swapchain->queue, 1, &submit, VK_NULL_HANDLE);
-    free(stages);
-    if (result != VK_SUCCESS) return result;
-    // Start with explicit completion, before considering asynchronous fence
-    // optimizations. The GL copy must see completed Vulkan writes.
-    result = vulkanWrapper.vkQueueWaitIdle(swapchain->queue);
-    if (result != VK_SUCCESS) return result;
+    if (result == VK_SUCCESS) *command = target->releaseCommand;
+    return result;
+}
+
+VkResult XWindowSwapchain_completePresent(XWindowSwapchain* swapchain, uint32_t imageIndex) {
+    // The batch's queue wait completed all native writes and FOREIGN releases.
+    XWindowSwapchain_Image* target = &swapchain->images[imageIndex];
     target->acquired = false;
     JNIEnv* env = swapchain->jmethods->env;
     jint copied = (*env)->CallIntMethod(env, swapchain->jmethods->obj,

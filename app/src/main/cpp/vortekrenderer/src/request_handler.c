@@ -2107,27 +2107,13 @@ void vt_handle_vkAcquireNextImageKHR(VkContext* context) {
             result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR ? sizeof(imageIndex) : 0);
 }
 
-static VkResult mergePresentResult(VkResult accumulated, VkResult next) {
-    if (accumulated == VK_ERROR_DEVICE_LOST || next == VK_ERROR_DEVICE_LOST) return VK_ERROR_DEVICE_LOST;
-    if (accumulated == VK_ERROR_SURFACE_LOST_KHR || next == VK_ERROR_SURFACE_LOST_KHR) return VK_ERROR_SURFACE_LOST_KHR;
-    if (accumulated == VK_ERROR_OUT_OF_DATE_KHR || next == VK_ERROR_OUT_OF_DATE_KHR) return VK_ERROR_OUT_OF_DATE_KHR;
-    if (accumulated < 0) return accumulated;
-    if (next < 0) return next;
-    return accumulated == VK_SUBOPTIMAL_KHR || next == VK_SUBOPTIMAL_KHR ? VK_SUBOPTIMAL_KHR : VK_SUCCESS;
-}
-
 void vt_handle_vkQueuePresentKHR(VkContext* context) {
+    uint64_t queueId = 0;
     VkPresentInfoKHR presentInfo = {0};
-    vt_unserialize_VkPresentInfoKHR(&presentInfo, context->inputBuffer, &context->memoryPool);
+    vt_unserialize_vkQueuePresentKHR((VkQueue)&queueId, &presentInfo, context->inputBuffer, &context->memoryPool);
+    VkQueue queue = VkObject_fromId(queueId);
     VkResult* results = vt_alloc(&context->memoryPool, presentInfo.swapchainCount * sizeof(VkResult));
-    VkResult combined = VK_SUCCESS;
-    for (uint32_t i = 0; i < presentInfo.swapchainCount; i++) {
-        VkResult result = combined == VK_ERROR_DEVICE_LOST ? VK_ERROR_DEVICE_LOST :
-                XWindowSwapchain_presentImage((XWindowSwapchain*)presentInfo.pSwapchains[i], presentInfo.pImageIndices[i],
-                    i == 0 ? presentInfo.waitSemaphoreCount : 0, presentInfo.pWaitSemaphores);
-        results[i] = result;
-        combined = mergePresentResult(combined, result);
-    }
+    VkResult combined = XWindowSwapchain_present(queue, &presentInfo, results);
     // Paired protocol: report every swapchain's result, including recoverable
     // window changes. Only actual device loss terminates this connection.
     vt_send(context->clientRing, combined, results, presentInfo.swapchainCount * sizeof(VkResult));

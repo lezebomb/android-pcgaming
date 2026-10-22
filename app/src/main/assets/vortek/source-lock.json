@@ -7,7 +7,7 @@
     "Explicit Android guest-client build role",
     "Session-owned socket from environment; no other app path",
     "Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions",
-    "Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged",
+    "Paired submit/present acknowledgements, explicit acquire index and original present queue in request",
     "64-bit memory mapping, checked page-aligned fd ranges, placed-map reservation and fd/mapping cleanup",
     "Exact streaming pipeline replies; null native pipeline handles remain null",
     "Surface queries2 adapt the proxy WSI; acquire2 shares checked acquire decoding"
@@ -15,10 +15,10 @@
   "preparedSha256": {
     "header": "609b481998da7de21e820a5fa59e353545b5881b14630396cfff185abac87965",
     "main": "1af03fa1afe49e79c38ee338828c294f9a95cd41c6b40adc7a884700460b712a",
-    "calls": "cecee4defea7d4550a4e96685c7a77d03f99d08e212913a6006977e728022656",
+    "calls": "a864a9a1af7eb3458678af5470beb8d254daa1acd9a9b333e333658e5110668e",
     "serializer": "91681f0ebe619db601ccedb68661b9d9361ac92a56e56cc4287b72d250dd93bb",
     "mapping": "bb4a6ed61955b7dc5b7d71b9403c4768d117ddfbb9970fd486b0ed598c86244c"
   },
-  "protocol": "Dimensity reply v5 (v4 plus explicit acquire2 status/index); use paired server",
+  "protocol": "Dimensity protocol v6 (v5 plus full queue/present-info request); use paired server",
   "status": "optional per-game backend; offline build only, not validated on device"
 }

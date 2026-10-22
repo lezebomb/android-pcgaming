@@ -107,7 +107,8 @@ calls=calls.slice(0,presentStart)+
     VT_CALL_LOCK();
     VkPresentInfoKHR info = *pPresentInfo;
     info.pResults = NULL; // Output memory must not be serialized as input.
-    VT_SERIALIZE_CMD(VkPresentInfoKHR, &info);
+    VkObject* queueObject = VkObject_fromHandle(queue);
+    VT_SERIALIZE_CMD(vkQueuePresentKHR, (VkQueue)&queueObject->id, &info);
     VT_SEND_CHECKED(REQUEST_CODE_VK_QUEUE_PRESENT_KHR, VT_RETURN);
     char* inputBuffer = NULL;
     int replySize = 0;
@@ -246,12 +247,12 @@ fs.writeFileSync(`${out}/source-lock.json`,JSON.stringify({
   archiveSha256:expected,pairedWinlatorAppCommit:'a030f552f452158a2db64fdb32b490fa19c0b48d',
   changes:['Explicit Android guest-client build role','Session-owned socket from environment; no other app path',
     'Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions',
-    'Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged',
+    'Paired submit/present acknowledgements, explicit acquire index and original present queue in request',
     '64-bit memory mapping, checked page-aligned fd ranges, placed-map reservation and fd/mapping cleanup',
     'Exact streaming pipeline replies; null native pipeline handles remain null',
     'Surface queries2 adapt the proxy WSI; acquire2 shares checked acquire decoding'],
   preparedSha256:{header:hash(header),main:hash(main),calls:hash(calls),serializer:hash(clientSerializer),mapping:hash(fs.readFileSync('scripts/vortek-client/dimensity_mapping.h'))},
-  protocol:'Dimensity reply v5 (v4 plus explicit acquire2 status/index); use paired server',
+  protocol:'Dimensity protocol v6 (v5 plus full queue/present-info request); use paired server',
   status:'optional per-game backend; offline build only, not validated on device'
 },null,2));
 console.log('Prepared pinned Android Vortek client; existing renderer unchanged.');

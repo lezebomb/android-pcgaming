@@ -104,3 +104,7 @@ APK构建及v2通过，631682630bytes，SHA2560fd5ae2ed82066c4ad958a61f5676dbece
 ### 离线0.1.41显示恢复
 
 完成Java/ARM64与APK构建、v2验签；APK642837639bytes，SHA256cacc4ce78d5a683f3cec1afdc6681a147158cb7bcee19f91c12433a98ce97f6c。只做必要构建和拷贝/取消/重试的源码时序检查，未重复旧GPU或手柄套件。未安装，设备仍0.1.35，EGL恢复效果待平板。
+
+### 离线0.1.42批量呈现
+
+一次CPU时序短查直接编译产品present_queue.c，以记录端验证调用方队列、单次信号消费、先GPU完成后GL，以及各窗口/内存错误：vortek_present_queue_result=0。ARM64客户/服务端、APK和v2验签通过。APK642838851bytes，SHA2568ac0a742e30846828fcf23407198fa030edc7f143e79100e97a0bcb1a6447444。未安装或实机测试，不能据此判断帧率或黑屏改善。

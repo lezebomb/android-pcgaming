@@ -15,6 +15,7 @@ add_library(vortekrenderer SHARED
             src/vk_context.c
             src/resource_memory.c
             src/xwindow_swapchain.c
+            src/present_queue.c
             src/texture_decoder.c
             src/shader_inspector.c
             src/async_pipeline_creator.c

@@ -37,6 +37,8 @@ extern VkResult getSurfaceFormats(VkPhysicalDevice physicalDevice, uint32_t* for
 extern VkResult XWindowSwapchain_create(VkPhysicalDevice physicalDevice, VkDevice device, uint32_t graphicsQueueIndex, VkSwapchainCreateInfoKHR* swapchainInfo, JMethods* jmethods, int windowId, XWindowSwapchain** output);
 extern void XWindowSwapchain_destroy(VkDevice device, XWindowSwapchain* swapchain);
 extern VkResult XWindowSwapchain_acquireNextImage(XWindowSwapchain* swapchain, uint64_t timeout, VkSemaphore signalSemaphore, VkFence fence, uint32_t* imageIndex);
-extern VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t imageIndex, uint32_t waitCount, const VkSemaphore* waits);
+extern VkResult XWindowSwapchain_preparePresent(XWindowSwapchain* swapchain, uint32_t imageIndex, VkCommandBuffer* command);
+extern VkResult XWindowSwapchain_completePresent(XWindowSwapchain* swapchain, uint32_t imageIndex);
+extern VkResult XWindowSwapchain_present(VkQueue queue, const VkPresentInfoKHR* info, VkResult* results);
 
 #endif

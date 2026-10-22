@@ -91,3 +91,9 @@ SPIR-V增加零长度/越界指令及所读取操作数的界限检查，OpName�
 GPUImage原有100ms导入退避，却被Vortek首次失败直接转为DEVICE_LOST，无法利用重试。现在GL线程返回明确结果，只有有效AHB且尚无可用纹理时才重试，保持FOREIGN所有权到实际拷贝完成；750ms内仍不可用则终止会话。排队超过1秒可取消，已经运行的拷贝不取消、不允许生产者复用，5秒上限仍保留。
 
 窗口输出使用原目标drawable，避免预检查与入队间resize导致旧AHB拷进新窗口；目标身份变化返回OUT_OF_DATE，不冒充GPU丢失。窗口content用volatile保证GL线程看到变更。失败拷贝不再算成功帧，glFinish后的错误也纳入结果。只完成离线构建，未确认实机恢复或稳定性。
+
+### 0.1.42离线呈现队列
+
+原实现未传入vkQueuePresentKHR的queue，一直使用后端固定queue0。现在使用完整queue/present-info请求（成对协议v6），一次提交同批已准备图像的FOREIGN释放命令，只消费一次等待信号；一次GPU完成等待后才逐窗口GL拷贝，减少多窗口重复等待。即使所有目标过期，等待信号也会被消费；提交前内存失败保留图像/信号状态，提交后不能保证状态的失败终止设备会话。依据：[vkQueuePresentKHR队列和错误语义](https://docs.vulkan.org/refpages/latest/refpages/source/vkQueuePresentKHR.html)。
+
+一次直接编译产品present_queue.c的CPU记录接口短查覆盖调用队列、两窗口单次等待、部分/全部目标失败、提交前内存错误和提交后错误，无真实GPU。已编译ARM64两端与APK，未安装实机。
