@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=C-Dogs SDL
+Exec=wine C:/Games/DGCompat/CDogs/bin/cdogs-sdl.exe
+[Extra Data]
+container_id=1
+envVars=SDL_RENDER_DRIVER=direct3d SDL_JOYSTICK_WGI=0 SDL_JOYSTICK_RAWINPUT=0 SDL_JOYSTICK_GAMEINPUT=0 SDL_XINPUT_ENABLED=1

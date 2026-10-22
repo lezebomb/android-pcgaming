@@ -1,0 +1,436 @@
+{
+  "baselineRepository": "https://github.com/GunaCharanTeja/WinlatorMali",
+  "baselineCommit": "fbf42d26411444249a301086da0dcb652b861b17",
+  "assets": [
+    {
+      "path": "app/src/main/assets/box64/box64-0.3.7.tzst",
+      "size": 2971992,
+      "sha256": "ce95d5b352eaceaa31143bebf453c838ff49be4c7ee7ecb51c15af593af7862f",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/box64/box64-0.3.7.tzst"
+    },
+    {
+      "path": "app/src/main/assets/box64/box64-0.4.3.tzst",
+      "size": 3538220,
+      "sha256": "5641856c633797653aa419fad19691f92a7ac2b8f1c5f1cc0cf41c5011c0cbb0",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/box64/box64-0.4.3.tzst"
+    },
+    {
+      "path": "app/src/main/assets/container_pattern_common.tzst",
+      "size": 45299596,
+      "sha256": "e6f9d37ef9a98605dfa59acde047bb2ede7af7f4c16da19d362ad785e4ee3ca5",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/container_pattern_common.tzst"
+    },
+    {
+      "path": "app/src/main/assets/ddrawrapper/cnc-ddraw.tzst",
+      "size": 173333,
+      "sha256": "d2aea34321200dd07a979a83c329da207d67af8e72fa182c307a39257d5e1d5b",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/ddrawrapper/cnc-ddraw.tzst"
+    },
+    {
+      "path": "app/src/main/assets/ddrawrapper/dd7to9.tzst",
+      "size": 2931444,
+      "sha256": "60569bcd7cde3cf6914ecae66b660d36a74378e4d830de2e1df76d09a4202fdd",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/ddrawrapper/dd7to9.tzst"
+    },
+    {
+      "path": "app/src/main/assets/ddrawrapper/nglide.tzst",
+      "size": 1205148,
+      "sha256": "3f5eb40810376cdb5bb2d18ea374bbd08177053b4aa9f923b9b440ebefe0d554",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/ddrawrapper/nglide.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/d8vk-1.0.tzst",
+      "size": 1851455,
+      "sha256": "da30a104f83f619214a3bc67c971434837e1a11ca30703d0f79041a93f2be246",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/d8vk-1.0.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.10.3-async.tzst",
+      "size": 3666587,
+      "sha256": "392951b487b43f78db0ab9b3d4f7a1d0465283db60fdb2a7976d55e7a60f2345",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.10.3-async.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.10.3.tzst",
+      "size": 7544894,
+      "sha256": "b337191462864958fab9d9bff2b1760a263ee330ce98b81aa59c478e795c2394",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.10.3.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.11.1-sarek.tzst",
+      "size": 3645431,
+      "sha256": "ce37f7d779e1f9ec51bc01997a7bedc31ad5e5c16f96c26840f9389f034fe3f2",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.11.1-sarek.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.12.1-sarek.tzst",
+      "size": 4628686,
+      "sha256": "715a37bc6e4d9a8f7270af50ac042fa04084f709e04625a2efd01d1234eba8a1",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.12.1-sarek.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.5.5-async.tzst",
+      "size": 2994419,
+      "sha256": "559a8d86fdedcbc731e93a8ffbea9603800cdc76d6fe03df3ca63885289880c5",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.5.5-async.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.5.5.tzst",
+      "size": 3021544,
+      "sha256": "e80a4009b4d643f90e39adaf52d2550a738a8a26bde5848bd4a6ccaf636136fb",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.5.5.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.7-async.tzst",
+      "size": 3173172,
+      "sha256": "65bec6b58f16a0e7d4b1022e46f6a68e5cbc8693af58a782f6ac8bdd7888351f",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.7-async.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.7.2.tzst",
+      "size": 3250256,
+      "sha256": "d2c23ad3b0e622368bf2ef2de4904e98cb03f241431f1789b6868e01daf28c8a",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.7.2.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.7.3-async.tzst",
+      "size": 3184197,
+      "sha256": "b9bfad307626cdfe5e7fbd5d70b859a1d1bd870dadbf0a37177984345385fe64",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.7.3-async.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.9.3.tzst",
+      "size": 3423333,
+      "sha256": "08c1d19bff7d00781383a71522e4c9d597bb027da424c834d14f7c6ce01d1f1e",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.9.3.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/dxvk-v2.3.1-stripped.tzst",
+      "size": 2679314,
+      "sha256": "c5ad553cc815679b07fe7396dc4f0b32a4df06857ebb32272ecab2c6f8354f3a",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-v2.3.1-stripped.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/vkd3d-2.14.1.tzst",
+      "size": 2349256,
+      "sha256": "406c459f59aca9d00d47330f216fb391d75bb0fd0bd79a77ffdd16260a168c62",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/vkd3d-2.14.1.tzst"
+    },
+    {
+      "path": "app/src/main/assets/dxwrapper/vkd3d-2.8.tzst",
+      "size": 1974187,
+      "sha256": "c2d53cae7b66b47839c6866de7cd5f181e85011f5d164a69cd63b6541cf528f1",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/vkd3d-2.8.tzst"
+    },
+    {
+      "path": "app/src/main/assets/fexcore/fexcore-2508.tzst",
+      "size": 3416724,
+      "sha256": "84b3fd9536b9ce8173663ac383e3072d791685d5a156c724a105a6f6974b3b9a",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/fexcore/fexcore-2508.tzst"
+    },
+    {
+      "path": "app/src/main/assets/fexcore/fexcore-2601.tzst",
+      "size": 2808574,
+      "sha256": "c17d7b020e661603a7255a1632fc33dfd333971ccb72ed7e8c8ce7cff5b86e53",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/fexcore/fexcore-2601.tzst"
+    },
+    {
+      "path": "app/src/main/assets/fexcore/fexcore-2605.tzst",
+      "size": 1114476,
+      "sha256": "98ce588bdf4bff6dfcde38bed2c2543c2428f27bb701467be8c665a45f00ee49",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/fexcore/fexcore-2605.tzst"
+    },
+    {
+      "path": "app/src/main/assets/fexcore/fexcore-hybrid-x86.tzst",
+      "size": 1108598,
+      "sha256": "6a5519ac5aa59961fb2ca16f8bbbecff67579ad1e209e5727060aa2fef64c636",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/fexcore/fexcore-hybrid-x86.tzst"
+    },
+    {
+      "path": "app/src/main/assets/graphics_driver/adrenotools-turnip25.1.0.tzst",
+      "size": 2593869,
+      "sha256": "b3824227a3bcac367352bae86a34ed95add9b99fae50c16b7c7f48506d7ce197",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/graphics_driver/adrenotools-turnip25.1.0.tzst"
+    },
+    {
+      "path": "app/src/main/assets/graphics_driver/adrenotools-v819.tzst",
+      "size": 9881991,
+      "sha256": "5fb2cb62f0ddb1a67751a3086b46d147d658b049b4c782008039fd84d5f2bcf3",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/graphics_driver/adrenotools-v819.tzst"
+    },
+    {
+      "path": "app/src/main/assets/graphics_driver/extra_libs.tzst",
+      "size": 1920938,
+      "sha256": "65ad9455a8189aa6193e813bf8e80375f431ab4217d9639710d83b90ebf7fc4d",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/graphics_driver/extra_libs.tzst"
+    },
+    {
+      "path": "app/src/main/assets/graphics_driver/gladio-1.1.tzst",
+      "size": 334839,
+      "sha256": "23d07ae2a46fc89817a997e0ac70bdee60229178dfa51e1bc031c6609a6ab877",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/graphics_driver/gladio-1.1.tzst"
+    },
+    {
+      "path": "app/src/main/assets/graphics_driver/leegao_bcn.tzst",
+      "size": 1111581,
+      "sha256": "4c30fbaacd7f7e46e906f38c9564bdfbc50b95cca9c3ff6dab2d92130552cd0c",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/graphics_driver/leegao_bcn.tzst"
+    },
+    {
+      "path": "app/src/main/assets/graphics_driver/wrapper.tzst",
+      "size": 4081653,
+      "sha256": "8d34536fd5ee94930a3d217007800b8099b66fcf56b67b4e938ce14e17ece738",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/graphics_driver/wrapper.tzst"
+    },
+    {
+      "path": "app/src/main/assets/imagefs.tzst",
+      "size": 199788880,
+      "sha256": "0c8c6c1c7653766323378f3294be6618392075bd354d50b2416a534a6e231620",
+      "kind": "release",
+      "script": "scripts/fetch-runtime.mjs",
+      "name": "imagefs.tzst"
+    },
+    {
+      "path": "app/src/main/assets/input_dlls.tzst",
+      "size": 514355,
+      "sha256": "f6790eaa8846a6573af1cce2c6997de63b7d76a949bab79a71170ebff9283fcb",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/input_dlls.tzst"
+    },
+    {
+      "path": "app/src/main/assets/layers.tzst",
+      "size": 4447187,
+      "sha256": "9beac20c3e2c7f2c224f2c18cc6dc253b0f70450006fc986970992c7a8814ffa",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/layers.tzst"
+    },
+    {
+      "path": "app/src/main/assets/mali_compat/libdxvk_mali_compat_layer.so",
+      "size": 16825168,
+      "sha256": "6806dc2c1d664eb1209ca14d003472d3a2bd2cc6acbc842913daa9b001616df3",
+      "kind": "build",
+      "script": "scripts/build-mali-compat.ps1"
+    },
+    {
+      "path": "app/src/main/assets/proton-10-arm64ec.tzst",
+      "size": 204777490,
+      "sha256": "d00ff472fb2ee9fe1bfe1a6e7b28d012e7f854b1ed10596aaa702295e8410548",
+      "kind": "release",
+      "script": "scripts/fetch-runtime.mjs",
+      "name": "proton-10-arm64ec.tzst"
+    },
+    {
+      "path": "app/src/main/assets/proton-10-arm64ec_container_pattern.tzst",
+      "size": 26365259,
+      "sha256": "514fb9e0301d49194d904ea62d9d065649c014da1601a0a133dfaff756e1d79c",
+      "kind": "release",
+      "script": "scripts/fetch-runtime.mjs",
+      "name": "proton-10-arm64ec_container_pattern.tzst"
+    },
+    {
+      "path": "app/src/main/assets/pulseaudio-gamenative-20260612.tzst",
+      "size": 78340,
+      "sha256": "357bb53fbcf91ab2adcd2e6a4b7fc3f2cb95f1555610681b08dbf6d412ac4bd8",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/pulseaudio-gamenative-20260612.tzst"
+    },
+    {
+      "path": "app/src/main/assets/pulseaudio.tzst",
+      "size": 758126,
+      "sha256": "b80285a8e7f2b0db89d4935bfc90a70c06b7aad9c76137069d6517cd2e7f7666",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/pulseaudio.tzst"
+    },
+    {
+      "path": "app/src/main/assets/vortek/libvulkan_vortek.so",
+      "size": 2199080,
+      "sha256": "65c209f16369077e1d3d95c82dc96471b5d20914ae4a206e74436efafc2a18e9",
+      "kind": "build",
+      "script": "scripts/build-vortek-client.ps1"
+    },
+    {
+      "path": "app/src/main/assets/wincomponents/ddraw.tzst",
+      "size": 166133,
+      "sha256": "eabb2d59ce7060767996d0c9597ee8772059126a3af01698e59a5e7905e49867",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wincomponents/ddraw.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wincomponents/direct3d.tzst",
+      "size": 31207067,
+      "sha256": "149d55436e050bfa3fe8caf650cb97ddb2bc9fa99cd96869bd2bc4977b708fb5",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wincomponents/direct3d.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wincomponents/directmusic.tzst",
+      "size": 337109,
+      "sha256": "eb906732d14766641edfae0b2d722c36f4632de7fa321a5844037115b513b77e",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wincomponents/directmusic.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wincomponents/directplay.tzst",
+      "size": 429728,
+      "sha256": "70eb81449230af66286f5b4d5922dca13057600c35d4cdfe91930e966c2386d9",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wincomponents/directplay.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wincomponents/directshow.tzst",
+      "size": 2209278,
+      "sha256": "aa682b7ee6e5903e4571bfe5a8dc9b05d0a9f05cd860cfdc810f2ddd3745e9b4",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wincomponents/directshow.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wincomponents/directsound.tzst",
+      "size": 434853,
+      "sha256": "72f0e880eef1387a55602ac02b07ef26778d23c2f70d931bd2d13e92f8dc99d4",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wincomponents/directsound.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wincomponents/vcrun2010.tzst",
+      "size": 1038731,
+      "sha256": "9def7b4b5c31c839d155f05e372e0e9ce4968b57f815c1abf93b7735e7d0ceb7",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wincomponents/vcrun2010.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wincomponents/xaudio.tzst",
+      "size": 2329991,
+      "sha256": "2f80fd6242136b543ee2e1c8fb7daa9c0bcd0c318886ca502f84f456c83bbc43",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wincomponents/xaudio.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wowbox64/wowbox64-0.3.7.tzst",
+      "size": 1049978,
+      "sha256": "18b7cb690217473837726442b9756921c197e062faea1849f05f5fa74afb6f3d",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wowbox64/wowbox64-0.3.7.tzst"
+    },
+    {
+      "path": "app/src/main/assets/wowbox64/wowbox64-0.4.3.tzst",
+      "size": 1022740,
+      "sha256": "afc12c8dfc785c1ec0dfe70755262fe0f6e34acbbd34bab3f28562925d0b80b8",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/wowbox64/wowbox64-0.4.3.tzst"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libgn_ltdl.so",
+      "size": 38192,
+      "sha256": "bc12038c8cedb7ba405b6621b579ad6b643e018b12f5f1d01e6cb78169e49907",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libgn_ltdl.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libgn_pulse.so",
+      "size": 331072,
+      "sha256": "061a0479989dd406924c837d7a09a59f086aec122d8b636b518da1658f225052",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libgn_pulse.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libgn_pulseaudio.so",
+      "size": 67040,
+      "sha256": "c70622e9dadb31aba51b36ca6313a944e0febd8beabea5ace4b9f42ce951d350",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libgn_pulseaudio.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libgn_pulsecommon-13.0.so",
+      "size": 473432,
+      "sha256": "febdaa6fb344775f0c980c100e33046b27c9701d24346a45890b640380147a26",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libgn_pulsecommon-13.0.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libgn_pulsecore-13.0.so",
+      "size": 643224,
+      "sha256": "1bbfb039b159da9b6c0090e3309e6f686b1468e8a4d77b8a61612fa3af3e576a",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libgn_pulsecore-13.0.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libgn_sndfile.so",
+      "size": 476976,
+      "sha256": "d6b61f5dddedce3cd29c5db9b58b5dd16a4b3faebfcbe925bc9432e2993831ee",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libgn_sndfile.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libltdl.so",
+      "size": 34424,
+      "sha256": "9edbccc42de49244d42a5e8fdc001828cf5a5512f1705419bcd96e23783c2998",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libltdl.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libpulse.so",
+      "size": 293456,
+      "sha256": "3a97a458ffc70732d167855bc97c7dea39cb338bfa7d74d4c851ab27f2ec2d54",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libpulse.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libpulseaudio.so",
+      "size": 67416,
+      "sha256": "a9511cd0984a12f235752af98c11f8a31971b10c1d62da324996d8c8a7e1d0c1",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libpulseaudio.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libpulsecommon-13.0.so",
+      "size": 415400,
+      "sha256": "c008c397967eb26fbc9bb1164998d8b62dc79179c8be27f299d5375f177981e1",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libpulsecommon-13.0.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libpulsecore-13.0.so",
+      "size": 547264,
+      "sha256": "06bc87b6f725ee2e405648bc375eb7c3c2569731eae8d37ad8ccd31e8fa7f865",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libpulsecore-13.0.so"
+    },
+    {
+      "path": "app/src/main/jniLibs/arm64-v8a/libsndfile.so",
+      "size": 403392,
+      "sha256": "2df0fde1f7bbc4b9839e890ff8ab5dd3b73c82e31eb140be4f804c3dcb44fc2f",
+      "kind": "pinned-url",
+      "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/jniLibs/arm64-v8a/libsndfile.so"
+    }
+  ]
+}

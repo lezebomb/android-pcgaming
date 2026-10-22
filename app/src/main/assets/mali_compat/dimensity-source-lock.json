@@ -1,0 +1,299 @@
+{
+  "repository": "https://github.com/leegao/compat_layer",
+  "revision": "22960fb33a91226a9ab615288b0846ef7eac456b",
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "sha": "7ee3fd5224603404256183e0d19cf8e3de11bc4d",
+      "size": 2630
+    },
+    {
+      "path": "LICENSE",
+      "sha": "bc0ef541aab7be78a26e73e4769d4b4c73f19dae",
+      "size": 1064
+    },
+    {
+      "path": "README.md",
+      "sha": "be4946120399cea92cf69a9803a6b166e6eed1a5",
+      "size": 9353
+    },
+    {
+      "path": "libdxvk_mali_compat_layer.json.in",
+      "sha": "4b7b3d969a153d6dca2c710d0eea84e23bbff943",
+      "size": 636
+    },
+    {
+      "path": "libdxvk_mali_compat_layer32.json.in",
+      "sha": "54caadc4705bbc6840529fc5a58b8c85e2e4372f",
+      "size": 640
+    },
+    {
+      "path": "src/buffer.cpp",
+      "sha": "4e15f52bf8c52cec2e72e9f81352d152e0ba71d7",
+      "size": 7729
+    },
+    {
+      "path": "src/buffer.hpp",
+      "sha": "305b2c77780192ab08ab5fa229a31e666b4c5e03",
+      "size": 1109
+    },
+    {
+      "path": "src/command_buffer.cpp",
+      "sha": "492ceba9855546fcb9715866575a2201d1052350",
+      "size": 16373
+    },
+    {
+      "path": "src/command_buffer.hpp",
+      "sha": "8344fcd64f7bfcee925180587fd7bc268abb07de",
+      "size": 617
+    },
+    {
+      "path": "src/descriptors.cpp",
+      "sha": "9708c7e1d865a3354df515c1b68a0631a4c7cef0",
+      "size": 13968
+    },
+    {
+      "path": "src/descriptors.hpp",
+      "sha": "b166c3cc292f7b31d51653600cf37599c650bf46",
+      "size": 2184
+    },
+    {
+      "path": "src/generated_spoofed_profile.hpp",
+      "sha": "c87268faebfa2e899571459abb84f7d1cb48c627",
+      "size": 18887
+    },
+    {
+      "path": "src/image.cpp",
+      "sha": "0d34233cc23f5d6703519c1834de94a0a612a47f",
+      "size": 3330
+    },
+    {
+      "path": "src/image.hpp",
+      "sha": "df95bee831c5274c2d28840bdeeb98bd4d6525e4",
+      "size": 426
+    },
+    {
+      "path": "src/layer.cpp",
+      "sha": "6fde543cdec747ac57e81f8a26d560a9e919d4ff",
+      "size": 51551
+    },
+    {
+      "path": "src/layer.hpp",
+      "sha": "c99d3221a5465b46cc12e9e3529270630c745656",
+      "size": 3896
+    },
+    {
+      "path": "src/logger.cpp",
+      "sha": "87b27927a3bb8b17786420c65ecfe05556032844",
+      "size": 1743
+    },
+    {
+      "path": "src/logger.hpp",
+      "sha": "d35cfd3e4c77ee7b88622915bada3dd401ef42dc",
+      "size": 364
+    },
+    {
+      "path": "src/mali_gpu_profiler.cpp",
+      "sha": "fa5559fcf516d98f48694bde15e40d9790e13e45",
+      "size": 13343
+    },
+    {
+      "path": "src/mali_gpu_profiler.hpp",
+      "sha": "f394ce0d4af297e3dca52bb2d581b98b609f9378",
+      "size": 625
+    },
+    {
+      "path": "src/null_descriptors.cpp",
+      "sha": "fe9dc064ba753496bbda9ec11c94681447fb2c92",
+      "size": 27221
+    },
+    {
+      "path": "src/null_descriptors.hpp",
+      "sha": "0b0d4045fbf52a8fb1cd0645284f9984f5bbe0a8",
+      "size": 1948
+    },
+    {
+      "path": "src/pipeline_state.cpp",
+      "sha": "016fc4e11ff40030773b23724acc34cbf4184000",
+      "size": 4219
+    },
+    {
+      "path": "src/pipeline_state.hpp",
+      "sha": "a85356d75dadc30e1caf3e3978bd41ee99e342a3",
+      "size": 2846
+    },
+    {
+      "path": "src/pipelines.cpp",
+      "sha": "88f3c01545c3b81b16846462710142c6fc0986bc",
+      "size": 6982
+    },
+    {
+      "path": "src/pipelines.hpp",
+      "sha": "a8ba9e50d09d547bebe6875245b27d8d7b236191",
+      "size": 684
+    },
+    {
+      "path": "src/push_descriptors.cpp",
+      "sha": "aef665ee268b246ecabc0747ecafc0678c15b31c",
+      "size": 4789
+    },
+    {
+      "path": "src/push_descriptors.hpp",
+      "sha": "f48d3696ee73d8d0b887d38904ea3c07b5bf1314",
+      "size": 1005
+    },
+    {
+      "path": "src/queue.cpp",
+      "sha": "eb4e9d268a8ecafbbe265048f5eb1b28d4d40c70",
+      "size": 18328
+    },
+    {
+      "path": "src/queue.hpp",
+      "sha": "cd7a68b8bc312c39248c17fb99a230041936a459",
+      "size": 1162
+    },
+    {
+      "path": "src/samplers.cpp",
+      "sha": "ae2c9855f7f015aaf089c20c5c0b81ecbaba7faa",
+      "size": 3220
+    },
+    {
+      "path": "src/samplers.hpp",
+      "sha": "3f68dd8d8879c4807e7abcf2b40c4558f8f1df0b",
+      "size": 269
+    },
+    {
+      "path": "src/shader_reflector.cpp",
+      "sha": "e8fc9f0b73930f2f278be8ffa43fbdd533ff83e5",
+      "size": 10085
+    },
+    {
+      "path": "src/shader_reflector.hpp",
+      "sha": "ecca6915b2aad8b71fb5874d4e1b823dffffafda",
+      "size": 814
+    },
+    {
+      "path": "src/sparse_binding.cpp",
+      "sha": "75b4832ad8cfeb79883200b4b03c88cd0b06afc7",
+      "size": 23585
+    },
+    {
+      "path": "src/sparse_binding.hpp",
+      "sha": "daac6b249fa0646f0868e689de0f97d48d6534bf",
+      "size": 2120
+    },
+    {
+      "path": "src/spirv-tools/android-arm64/libSPIRV-Tools-opt.a",
+      "sha": "2d6cfdcce1b0e9a02e732346dd788aff2b1e1b35",
+      "size": 21533162
+    },
+    {
+      "path": "src/spirv-tools/android-arm64/libSPIRV-Tools.a",
+      "sha": "9de220671e5b0af98934b332156baad3ecdb732b",
+      "size": 6448808
+    },
+    {
+      "path": "src/spirv-tools/include/spirv-tools/libspirv.h",
+      "sha": "c0b686a68f40e6549d22b7b4f5f85a33a0b78862",
+      "size": 48610
+    },
+    {
+      "path": "src/spirv-tools/include/spirv-tools/libspirv.hpp",
+      "sha": "1b3ed86a801b8e0ce9c986f5f39a738424c35c49",
+      "size": 16430
+    },
+    {
+      "path": "src/spirv-tools/include/spirv-tools/linker.hpp",
+      "sha": "99527ed6d65cd72c0b8fa84424bd2e8f0a970b59",
+      "size": 4818
+    },
+    {
+      "path": "src/spirv-tools/include/spirv-tools/optimizer.hpp",
+      "sha": "2ac5ec37ba540a5a425fe2d9286c91a1cd633e10",
+      "size": 52172
+    },
+    {
+      "path": "src/spirv_reflect/spirv.h",
+      "sha": "d9c551424e4b9c0b13556c243283aa2fac9e7662",
+      "size": 361744
+    },
+    {
+      "path": "src/spirv_reflect/spirv_reflect.c",
+      "sha": "86e472a1ee3db2fa428dd4ca9a169c49ff21080d",
+      "size": 245302
+    },
+    {
+      "path": "src/spirv_reflect/spirv_reflect.cpp",
+      "sha": "2c01055305378b4b7766f482b19e42420724986a",
+      "size": 96
+    },
+    {
+      "path": "src/spirv_reflect/spirv_reflect.h",
+      "sha": "74ea06e9fd525155e4fcc11fc88553dd21e41fed",
+      "size": 98445
+    },
+    {
+      "path": "src/spoof_profile.cpp",
+      "sha": "1b8dfc2c76ab8c15f6accb2675ccc4944a78b56a",
+      "size": 9933
+    },
+    {
+      "path": "src/spoof_profile.hpp",
+      "sha": "3fbda0c35be15222f94dbd74b5d200d98fed9664",
+      "size": 1210
+    },
+    {
+      "path": "src/staging_resources.cpp",
+      "sha": "90c5cfbbd044bd77b0aae0ef5d8306a484ee4e47",
+      "size": 13307
+    },
+    {
+      "path": "src/staging_resources.hpp",
+      "sha": "a1ada81eea7027f9d98d0200ad8f4d70c65d5d68",
+      "size": 4819
+    },
+    {
+      "path": "src/timestamps.cpp",
+      "sha": "574b2123d0c90eff17e18b552ab0c765793916c2",
+      "size": 2385
+    },
+    {
+      "path": "src/vk_func.cpp",
+      "sha": "5c5194a577a116446c07f7de7096e89414be0e1d",
+      "size": 8224
+    },
+    {
+      "path": "src/vk_func.hpp",
+      "sha": "d9b08ae5510cf32feda68c9f8ee927f4d197acd1",
+      "size": 14031
+    },
+    {
+      "path": "src/vulkan/vk_layer.h",
+      "sha": "874c2bad1abd662835cdd216e24d7cf88f5920fe",
+      "size": 16199
+    }
+  ],
+  "localPatches": [
+    {
+      "name": "sparse-allocation-and-opt-in-shader-capture",
+      "scriptSha256": "f6775222fca4ed3419cbcfa1d8a6e37672a637835d687db6d74849f077440c60",
+      "files": [
+        {
+          "path": "src/pipelines.cpp",
+          "upstreamGitBlob": "88f3c01545c3b81b16846462710142c6fc0986bc",
+          "patchedSha256": "8a05900ef1ab1cc956e973237df1aa9e6fce18928cd9311ce7e734ba438c91bb"
+        },
+        {
+          "path": "src/sparse_binding.hpp",
+          "upstreamGitBlob": "daac6b249fa0646f0868e689de0f97d48d6534bf",
+          "patchedSha256": "f86d570d24ef14444eaf5c8b7a5f6eb399e586ec5f1b30ea5fd92faae951649f"
+        },
+        {
+          "path": "src/sparse_binding.cpp",
+          "upstreamGitBlob": "75b4832ad8cfeb79883200b4b03c88cd0b06afc7",
+          "patchedSha256": "9d503ed3413a917c9290bbc282d1abe4f0af9878fbd9ffb178ef4cc9100eeb49"
+        }
+      ]
+    }
+  ]
+}

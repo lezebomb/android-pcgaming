@@ -1,0 +1,19 @@
+Dimensity Gaming 0.1.0 development build
+
+Based on WinlatorMali, commit fbf42d26411444249a301086da0dcb652b861b17.
+The original MIT copyright notice in the project LICENSE is preserved.
+Original Winlator and the component authors retain their copyrights.
+
+Wine/Proton, FEX, Box64, DXVK, Mesa Vulkan Wrapper, Gladio, PulseAudio,
+OpenXR, libadrenotools, liblinkernsbypass, patchelf, zstd and additional
+libraries retain their own licenses. See docs/licensing.md in the supplied
+source project and component license files. The root MIT license does not
+relicense bundled third-party components.
+
+GameNative and Playport were reviewed as architectural references. Their
+proprietary redirect/Steam bootstrap/KGSL components were not imported.
+
+This is a personal development build, not a claim of completed public
+redistribution compliance or of all runtime binaries rebuilt from source.
+Target-device compatibility and performance remain unverified without
+an authorized device run. No benchmark results are claimed.

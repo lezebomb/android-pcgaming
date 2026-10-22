@@ -1,0 +1,2 @@
+# Root project vendors the required source directories directly.
+# Upstream research clones and their submodule revisions are documented in docs/research.md.

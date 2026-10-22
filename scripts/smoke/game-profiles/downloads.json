@@ -1,0 +1,32 @@
+[
+  {
+    "repo": "fabiangreffrath/crispy-doom",
+    "tag": "crispy-doom-7.2",
+    "asset": "crispy-doom-7.2.0-win64.zip",
+    "url": "https://github.com/fabiangreffrath/crispy-doom/releases/download/crispy-doom-7.2/crispy-doom-7.2.0-win64.zip",
+    "page": "https://github.com/fabiangreffrath/crispy-doom/releases/tag/crispy-doom-7.2",
+    "bytes": 9924686,
+    "sha256": "c04feca63c00fd4c381c53cce8444a2bb520020be38368ce80da60484c94f2ab",
+    "releaseDigest": "sha256:c04feca63c00fd4c381c53cce8444a2bb520020be38368ce80da60484c94f2ab"
+  },
+  {
+    "repo": "freedoom/freedoom",
+    "tag": "v0.13.0",
+    "asset": "freedoom-0.13.0.zip",
+    "url": "https://github.com/freedoom/freedoom/releases/download/v0.13.0/freedoom-0.13.0.zip",
+    "page": "https://github.com/freedoom/freedoom/releases/tag/v0.13.0",
+    "bytes": 24143781,
+    "sha256": "3f9b264f3e3ce503b4fb7f6bdcb1f419d93c7b546f4df3e874dd878db9688f59",
+    "releaseDigest": null
+  },
+  {
+    "repo": "cxong/cdogs-sdl",
+    "tag": "2.5.0",
+    "asset": "C-Dogs.SDL-2.5.0-win32.zip",
+    "url": "https://github.com/cxong/cdogs-sdl/releases/download/2.5.0/C-Dogs.SDL-2.5.0-win32.zip",
+    "page": "https://github.com/cxong/cdogs-sdl/releases/tag/2.5.0",
+    "bytes": 34071179,
+    "sha256": "448409739c4409cc188f5342fdcb95aa1beea10c9cb87d3021fc471a47e8e5fc",
+    "releaseDigest": "sha256:448409739c4409cc188f5342fdcb95aa1beea10c9cb87d3021fc471a47e8e5fc"
+  }
+]

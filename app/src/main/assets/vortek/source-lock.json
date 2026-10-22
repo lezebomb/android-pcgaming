@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/brunodev85/vortek",
+  "commit": "b1730c5def9b575672e671aee11d79ae7adc63d1",
+  "archiveSha256": "eef892505c77fb6f3cc7bc78a151662ffb77bab934e5eeff8ead7270a6734c82",
+  "pairedWinlatorAppCommit": "a030f552f452158a2db64fdb32b490fa19c0b48d",
+  "changes": [
+    "Explicit Android guest-client build role",
+    "Session-owned socket from environment; no other app path",
+    "Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions"
+  ],
+  "preparedSha256": {
+    "header": "9598657d54ae3aec4f97080ec8608fb69d08b42c359358d1437e72df042ff4b6",
+    "main": "1af03fa1afe49e79c38ee338828c294f9a95cd41c6b40adc7a884700460b712a",
+    "calls": "fb743bd2ad90f4065bd22a9ca843c5c0cc08d466c7f937ef56383794f2c9297e"
+  },
+  "status": "offline build only; not installed or selected"
+}

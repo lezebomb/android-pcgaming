@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Freedoom
+Exec=wine C:/Games/DGCompat/Crispy/crispy-doom.exe
+[Extra Data]
+container_id=1
+execArgs=-iwad freedoom1.wad -config game.cfg -extraconfig extra.cfg -nomusic -warp 1 1 -skill 1
+envVars=SDL_RENDER_DRIVER=direct3d11 SDL_JOYSTICK_WGI=0 SDL_JOYSTICK_RAWINPUT=0 SDL_JOYSTICK_GAMEINPUT=0 SDL_XINPUT_ENABLED=1

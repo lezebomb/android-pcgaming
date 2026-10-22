@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    android:layout_width="340dp"
+    android:layout_height="240dp"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:fillViewport="true"
+    android:scrollbars="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <!-- ============================================================ -->
+        <!-- Universal FPS Limiter Section                                -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bordered_panel_dark"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:layout_marginBottom="10dp">
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Universal FPS Limiter"
+                    android:textStyle="bold"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:id="@+id/IVFPSLimitInfo"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:padding="4dp"
+                    android:src="@drawable/ic_driver_info"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Info"
+                    app:tint="?android:attr/textColorSecondary" />
+            </LinearLayout>
+
+            <TextView
+                android:textSize="11sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="High-precision throttling for consistent frame pacing."
+                android:layout_marginBottom="8dp" />
+
+            <Spinner
+                android:id="@+id/SFPSLimit"
+                style="@style/ComboBox"
+                android:entries="@array/fps_limit_entries"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:spinnerMode="dropdown" />
+
+            <EditText
+                android:id="@+id/ETCustomFPSLimit"
+                style="@style/EditText"
+                android:layout_width="match_parent"
+                android:layout_height="42dp"
+                android:layout_marginTop="6dp"
+                android:inputType="number"
+                android:hint="Custom FPS limit (e.g. 40, 72, 144)"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- Apex LSFG Section                                           -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bordered_panel_dark"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:layout_marginBottom="10dp">
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <CheckBox
+                    android:id="@+id/CBEnableLSFG"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="@string/enable_lsfg"
+                    android:textStyle="bold"
+                    android:textSize="13sp" />
+
+                <ImageView
+                    android:id="@+id/IVLSFGInfo"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:padding="4dp"
+                    android:src="@drawable/ic_driver_info"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Info"
+                    app:tint="?android:attr/textColorSecondary" />
+            </LinearLayout>
+
+            <TextView
+                android:textSize="11sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/lsfg_description"
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:orientation="vertical"
+                android:id="@+id/LLLSFGSettings"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:layout_marginBottom="4dp"
+                    android:text="@string/lsfg_quality" />
+
+                <Spinner
+                    android:id="@+id/SLSFGQuality"
+                    style="@style/ComboBox"
+                    android:entries="@array/lsfg_quality_entries"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:spinnerMode="dropdown"
+                    android:layout_marginBottom="10dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:text="Apex Render Scale" />
+
+                <Spinner
+                    android:id="@+id/SLSFGRenderScale"
+                    style="@style/ComboBox"
+                    android:entries="@array/apex_render_scale_entries"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:spinnerMode="dropdown"
+                    android:layout_marginBottom="10dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:text="Target FPS" />
+
+                <Spinner
+                    android:id="@+id/SLSFGTargetFPS"
+                    style="@style/ComboBox"
+                    android:entries="@array/lsfg_target_fps_entries"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:spinnerMode="dropdown"
+                    android:layout_marginBottom="6dp" />
+
+                <EditText
+                    android:id="@+id/ETCustomTargetFPS"
+                    style="@style/EditText"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:layout_marginBottom="10dp"
+                    android:inputType="number"
+                    android:hint="Custom Target FPS (e.g. 75, 144)"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="4dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:text="Liquid Feel Control" />
+
+                <com.winlator.cmod.widget.SeekBar
+                    android:id="@+id/SBLSFGLiquidFeel"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    app:sbMaxValue="1.0"
+                    app:sbMinValue="0.0"
+                    app:sbStep="0.01" />
+
+                <CheckBox
+                    android:id="@+id/CBEnableApexLogging"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="Apex Debug / GPU Pass Logging"
+                    android:textSize="12sp"
+                    android:textColor="?android:attr/textColorSecondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- HDR Section                                                  -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bordered_panel_dark"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:layout_marginBottom="10dp">
+
+            <CheckBox
+                android:id="@+id/CBEnableHDR"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enable Fake HDR"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:textSize="11sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Applies a dual-radius bloom blur and contrast boost." />
+        </LinearLayout>
+
+        <!-- ============================================================ -->
+        <!-- Sharpening (CAS) Section                                    -->
+        <!-- ============================================================ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bordered_panel_dark"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:layout_marginBottom="8dp">
+
+            <CheckBox
+                android:id="@+id/CBEnableSharpen"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Enable Sharpening (CAS)"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:textSize="11sp"
+                android:textColor="?android:attr/textColorSecondary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Contrast Adaptive Sharpening (CAS) resolves blurriness."
+                android:layout_marginBottom="4dp" />
+
+            <LinearLayout
+                android:orientation="vertical"
+                android:id="@+id/LLSharpenSettings"
+                android:visibility="gone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="4dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:text="Sharpening Mode" />
+
+                <Spinner
+                    android:id="@+id/SSharpenMode"
+                    style="@style/ComboBox"
+                    android:entries="@array/sharpening_mode_entries"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:spinnerMode="dropdown"
+                    android:layout_marginBottom="10dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="4dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:text="Sharpening Level" />
+
+                <com.winlator.cmod.widget.SeekBar
+                    android:id="@+id/SBSharpenLevel"
+                    android:layout_width="match_parent"
+                    android:layout_height="60dp"
+                    app:sbMaxValue="5.0"
+                    app:sbMinValue="1.0"
+                    app:sbStep="1.0" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Spacer at bottom -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="16dp" />
+    </LinearLayout>
+</ScrollView>
