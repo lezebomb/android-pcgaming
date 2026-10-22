@@ -13,8 +13,9 @@ static void loadJMethods(JMethods* jmethods) {
     jclass cls = (*env)->GetObjectClass(env, jmethods->obj);
     jmethods->getWindowWidth = (*env)->GetMethodID(env, cls, "getWindowWidth", "(I)I");
     jmethods->getWindowHeight = (*env)->GetMethodID(env, cls, "getWindowHeight", "(I)I");
-    jmethods->getWindowHardwareBuffer = (*env)->GetMethodID(env, cls, "getWindowHardwareBuffer", "(IZJ)J");
-    jmethods->updateWindowContent = (*env)->GetMethodID(env, cls, "updateWindowContent", "(I)Z");
+    jmethods->getWindowHardwareBuffer = (*env)->GetMethodID(env, cls, "getWindowHardwareBuffer", "(IZJJ)J");
+    jmethods->updateWindowContent = (*env)->GetMethodID(env, cls, "updateWindowContent", "(IJ)I");
+    jmethods->releaseOutput = (*env)->GetMethodID(env, cls, "releaseOutput", "(J)V");
 }
 
 static ExtraDataRequest* waitForExtraDataRequest(VkContext* context, uint16_t requestId) {

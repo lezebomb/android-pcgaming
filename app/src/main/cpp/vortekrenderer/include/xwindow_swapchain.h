@@ -25,6 +25,7 @@ typedef struct XWindowSwapchain {
     VkCommandBuffer acquireCommand;
     VkCommandBuffer releaseCommand;
     bool everAcquired;
+    bool acquired;
     JMethods* jmethods;
 } XWindowSwapchain;
 

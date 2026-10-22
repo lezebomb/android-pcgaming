@@ -2118,23 +2118,37 @@ void vt_handle_vkAcquireNextImageKHR(VkContext* context) {
     VkResult result = XWindowSwapchain_acquireNextImage(swapchain, timeout, semaphore, fence, &imageIndex);
     if (result == VK_ERROR_DEVICE_LOST) context->status = result;
 
-    vt_send(context->clientRing, result == VK_SUCCESS ? imageIndex : result, NULL, 0);
+    vt_send(context->clientRing, result, result == VK_SUCCESS ? &imageIndex : NULL, result == VK_SUCCESS ? sizeof(imageIndex) : 0);
+}
+
+static VkResult mergePresentResult(VkResult accumulated, VkResult next) {
+    if (accumulated == VK_ERROR_DEVICE_LOST || next == VK_ERROR_DEVICE_LOST) return VK_ERROR_DEVICE_LOST;
+    if (accumulated == VK_ERROR_SURFACE_LOST_KHR || next == VK_ERROR_SURFACE_LOST_KHR) return VK_ERROR_SURFACE_LOST_KHR;
+    if (accumulated == VK_ERROR_OUT_OF_DATE_KHR || next == VK_ERROR_OUT_OF_DATE_KHR) return VK_ERROR_OUT_OF_DATE_KHR;
+    if (accumulated < 0) return accumulated;
+    if (next < 0) return next;
+    return accumulated == VK_SUBOPTIMAL_KHR || next == VK_SUBOPTIMAL_KHR ? VK_SUBOPTIMAL_KHR : VK_SUCCESS;
 }
 
 void vt_handle_vkQueuePresentKHR(VkContext* context) {
     VkPresentInfoKHR presentInfo = {0};
     vt_unserialize_VkPresentInfoKHR(&presentInfo, context->inputBuffer, &context->memoryPool);
-
-    for (int i = 0; i < presentInfo.swapchainCount; i++) {
-        VkResult result = XWindowSwapchain_presentImage((XWindowSwapchain*)presentInfo.pSwapchains[i],
-                i == 0 ? presentInfo.waitSemaphoreCount : 0, presentInfo.pWaitSemaphores);
-        if (result != VK_SUCCESS) {
-            println("Vortek: GPU/compositor present failed: %d", result);
-            context->status = VK_ERROR_DEVICE_LOST;
-            RingBuffer_setStatus(context->serverRing, RING_STATUS_EXIT);
-            RingBuffer_setStatus(context->clientRing, RING_STATUS_EXIT);
-            break;
-        }
+    VkResult* results = vt_alloc(&context->memoryPool, presentInfo.swapchainCount * sizeof(VkResult));
+    VkResult combined = VK_SUCCESS;
+    for (uint32_t i = 0; i < presentInfo.swapchainCount; i++) {
+        VkResult result = combined == VK_ERROR_DEVICE_LOST ? VK_ERROR_DEVICE_LOST :
+                XWindowSwapchain_presentImage((XWindowSwapchain*)presentInfo.pSwapchains[i],
+                    i == 0 ? presentInfo.waitSemaphoreCount : 0, presentInfo.pWaitSemaphores);
+        results[i] = result;
+        combined = mergePresentResult(combined, result);
+    }
+    // Paired protocol: report every swapchain's result, including recoverable
+    // window changes. Only actual device loss terminates this connection.
+    vt_send(context->clientRing, combined, results, presentInfo.swapchainCount * sizeof(VkResult));
+    if (combined == VK_ERROR_DEVICE_LOST) {
+        context->status = combined;
+        RingBuffer_setStatus(context->serverRing, RING_STATUS_EXIT);
+        RingBuffer_setStatus(context->clientRing, RING_STATUS_EXIT);
     }
 }
 

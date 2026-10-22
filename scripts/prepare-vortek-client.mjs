@@ -78,6 +78,36 @@ for (const [name,count,items] of [
   calls=calls.replace(signature,'$1    if ('+items+' && !*'+count+') return VK_INCOMPLETE;\n');
 }
 
+// Paired WSI replies: real per-swapchain results and explicit acquire index.
+const acquireStatus = '    if (result >= 0 && result <= 10) {\n        *pImageIndex = result;\n        result = VK_SUCCESS;\n    }';
+if (!calls.includes(acquireStatus)) throw Error('Unexpected acquire reply decoding');
+calls=calls.replace(acquireStatus,'    if (result == VK_SUCCESS) memcpy(pImageIndex, inputBuffer, sizeof(*pImageIndex));');
+const presentStart=calls.indexOf('VkResult vt_call_vkQueuePresentKHR(');
+const presentEnd=calls.indexOf('\nVkResult vt_call_vkCreateXlibSurfaceKHR(',presentStart);
+if (presentStart<0 || presentEnd<presentStart || !calls.slice(presentStart,presentEnd).includes('pPresentInfo->pResults[i] = VK_SUCCESS'))
+  throw Error('Unexpected present acknowledgement implementation');
+calls=calls.slice(0,presentStart)+
+`VkResult vt_call_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
+    if (pPresentInfo->swapchainCount > CLIENT_RING_BUFFER_SIZE / sizeof(VkResult)) return VK_ERROR_OUT_OF_HOST_MEMORY;
+    VT_CALL_LOCK();
+    VkPresentInfoKHR info = *pPresentInfo;
+    info.pResults = NULL; // Output memory must not be serialized as input.
+    VT_SERIALIZE_CMD(VkPresentInfoKHR, &info);
+    VT_SEND_CHECKED(REQUEST_CODE_VK_QUEUE_PRESENT_KHR, VT_RETURN);
+    char* inputBuffer = NULL;
+    int replySize = 0;
+    int result = vt_recv(clientRing, &inputBuffer, &replySize, &globalMemoryPool);
+    if (result != VK_ERROR_DEVICE_LOST && replySize != pPresentInfo->swapchainCount * sizeof(VkResult)) {
+        VT_CALL_UNLOCK();
+        return VK_ERROR_DEVICE_LOST;
+    }
+    if (pPresentInfo->pResults && result != VK_ERROR_DEVICE_LOST)
+        memcpy(pPresentInfo->pResults, inputBuffer, replySize);
+    VT_CALL_UNLOCK();
+    return (VkResult)result;
+}
+`+calls.slice(presentEnd);
+
 const supportMarker='VkResult vt_call_vkGetPhysicalDeviceSurfaceSupportKHR(';
 if(!calls.includes(supportMarker))throw Error('Unexpected Vortek queue support entry');
 calls=calls.replace(supportMarker,`static VkBool32 vt_supportsPresentation(VkPhysicalDevice device, uint32_t family) {
@@ -150,9 +180,9 @@ fs.writeFileSync(`${out}/source-lock.json`,JSON.stringify({
   archiveSha256:expected,pairedWinlatorAppCommit:'a030f552f452158a2db64fdb32b490fa19c0b48d',
   changes:['Explicit Android guest-client build role','Session-owned socket from environment; no other app path',
     'Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions',
-    'Paired submission acknowledgements; request byte layouts unchanged'],
+    'Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged'],
   preparedSha256:{header:hash(header),main:hash(main),calls:hash(calls)},
-  protocol:'Dimensity paired submit-ack extension; do not mix with unmodified upstream server',
+  protocol:'Dimensity WSI reply v2 (submit/present ack, acquire index); do not mix with unmodified upstream server',
   status:'optional per-game backend; offline build only, not validated on device'
 },null,2));
 console.log('Prepared pinned Android Vortek client; existing renderer unchanged.');

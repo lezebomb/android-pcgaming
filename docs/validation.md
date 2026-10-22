@@ -63,3 +63,7 @@ GL上下文恢复与EGL导入失败恢复改动完成APK构建，v2签名验证�
 ### 离线0.1.31输出互操作更新
 
 ARM64客户/服务端与Java APK构建通过，v2验签通过；631679342bytes，SHA256e8e91da13eab245a8249baaffadbe8e79cfcafd9f114bd7c157e281a38bf7738。此次只做必要构建/验签，没有重复纹理fixture或实机测试。输出格式和厂商AHB用途查询仍需设备确认。
+
+### 0.1.32首次Vortek实机路径
+
+APK631681066bytes，SHA256752e46fa3557ecfe93cd777450445f575ebb3c23c958ccd5228e14261fae9937，构建/v2/保留数据安装通过。自编Win64 Vulkan程序在实际Vortek(Mali-G615 MC5)上64次呈现、一次窗口resize返回OUT_OF_DATE并重建成功，result=0；主机首次截屏超出默认缓冲，取到的后续截图已回库页，因此不以该截图证明色块可见。宿主确认AHB拷贝完成。真实Warzone Vortek短查仍黑：日志明确swapchainDesiredImageCount=1触发>=2断言，已停止该会话，下一步补多缓冲。这些均非AAA验收。

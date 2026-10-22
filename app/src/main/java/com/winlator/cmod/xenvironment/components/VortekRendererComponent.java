@@ -6,6 +6,7 @@ import android.content.Context;
 import android.util.Log;
 import androidx.annotation.Keep;
 import com.winlator.cmod.renderer.GPUImage;
+import com.winlator.cmod.renderer.GLRenderer;
 import com.winlator.cmod.xconnector.Client;
 import com.winlator.cmod.xconnector.ConnectionHandler;
 import com.winlator.cmod.xconnector.RequestHandler;
@@ -33,13 +34,15 @@ public final class VortekRendererComponent extends EnvironmentComponent
     private final Options options;
     private XConnectorEpoll connector;
     private volatile boolean stopped = true;
-    private final HashMap<Integer, Output> outputs = new HashMap<>();
+    private final HashMap<Long, Output> outputs = new HashMap<>();
     private long copiedFrames;
 
     private static final class Output {
+        final int windowId;
         final Drawable destination;
         final Drawable source;
-        Output(Drawable destination, Drawable source) {
+        Output(int windowId, Drawable destination, Drawable source) {
+            this.windowId = windowId;
             this.destination = destination;
             this.source = source;
         }
@@ -106,33 +109,33 @@ public final class VortekRendererComponent extends EnvironmentComponent
         }
     }
 
-    @Keep private long getWindowHardwareBuffer(int id, boolean bgra, long usage) {
+    @Keep private long getWindowHardwareBuffer(int id, boolean bgra, long usage, long key) {
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
             Window window = xServer.windowManager.getWindow(id);
             if (window == null || stopped) return 0;
             synchronized (outputs) {
-                Iterator<Map.Entry<Integer, Output>> iterator = outputs.entrySet().iterator();
+                Iterator<Map.Entry<Long, Output>> iterator = outputs.entrySet().iterator();
                 while (iterator.hasNext()) {
-                    Map.Entry<Integer, Output> entry = iterator.next();
-                    Window owner = xServer.windowManager.getWindow(entry.getKey());
+                    Map.Entry<Long, Output> entry = iterator.next();
+                    Window owner = xServer.windowManager.getWindow(entry.getValue().windowId);
                     if (owner == null || owner.getContent() != entry.getValue().destination) {
                         retire(entry.getValue());
                         iterator.remove();
                     }
                 }
-                Output output = outputs.get(id);
+                Output output = outputs.get(key);
                 if (output != null && (output.source.getGPUImage().format != (bgra ? 5 : 1)
                         || !output.source.getGPUImage().supportsRenderTargetUsage(usage))) {
                     retire(output);
-                    outputs.remove(id);
+                    outputs.remove(key);
                     output = null;
                 }
                 if (output == null) {
                     Drawable destination = window.getContent();
                     GPUImage image = GPUImage.createRenderTargetImage(destination.width, destination.height, bgra, usage);
                     if (image == null) return 0;
-                    output = new Output(destination, Drawable.fromGpuOutput(destination.width, destination.height, image));
-                    outputs.put(id, output);
+                    output = new Output(id, destination, Drawable.fromGpuOutput(destination.width, destination.height, image));
+                    outputs.put(key, output);
                     Log.i("DimensityVortek", "GPU output allocated: " + destination.width + "x" + destination.height
                             + " format=" + image.format + " cpuMapped=false");
                 }
@@ -141,38 +144,60 @@ public final class VortekRendererComponent extends EnvironmentComponent
         }
     }
 
-    @Keep private boolean updateWindowContent(int id) {
+    // Vulkan result values cross only this private JNI bridge.
+    private static final int VK_SUCCESS = 0;
+    private static final int VK_ERROR_DEVICE_LOST = -4;
+    private static final int VK_ERROR_SURFACE_LOST_KHR = -1000000000;
+    private static final int VK_ERROR_OUT_OF_DATE_KHR = -1000001004;
+
+    @Keep private void releaseOutput(long key) {
+        synchronized (outputs) {
+            Output output = outputs.remove(key);
+            if (output != null) retire(output);
+        }
+    }
+
+    @Keep private int updateWindowContent(int id, long key) {
         final Window window;
         final Output output;
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER)) {
             window = xServer.windowManager.getWindow(id);
-            synchronized (outputs) { output = outputs.get(id); }
-            if (window == null || output == null || window.getContent() != output.destination || stopped) return false;
+            synchronized (outputs) { output = outputs.get(key); }
+            if (stopped) return VK_ERROR_DEVICE_LOST;
+            if (window == null) return VK_ERROR_SURFACE_LOST_KHR;
+            if (output == null || window.getContent() != output.destination) return VK_ERROR_OUT_OF_DATE_KHR;
         }
-        // Do not hold an X11 lock while waiting for the GL compositor.
         CountDownLatch done = new CountDownLatch(1);
         AtomicBoolean copied = new AtomicBoolean();
-        xServer.getRenderer().copyVulkanFrame(window, output.source, success -> {
+        GLRenderer.GpuCopyRequest request = xServer.getRenderer().copyVulkanFrame(window, output.source, success -> {
             copied.set(success);
             done.countDown();
         });
         long start = System.nanoTime();
-        boolean warned = false;
         try {
             while (!done.await(50, TimeUnit.MILLISECONDS)) {
-                if (stopped) return false;
-                if (!warned && System.nanoTime() - start > TimeUnit.SECONDS.toNanos(2)) {
-                    warned = true;
-                    Log.i("DimensityVortek", "Waiting for GL copy (surface may be paused)");
+                if (stopped) {
+                    request.cancelBeforeStart();
+                    return VK_ERROR_DEVICE_LOST;
                 }
+                long elapsed = System.nanoTime() - start;
+                // A paused surface must not leave a delayed copy reading a
+                // producer buffer after it has been reacquired and overwritten.
+                if (elapsed > TimeUnit.SECONDS.toNanos(1) && request.cancelBeforeStart())
+                    return VK_ERROR_OUT_OF_DATE_KHR;
+                // A copy already running cannot be cancelled safely. A stuck
+                // GPU ends this device session, preventing buffer reuse.
+                if (elapsed > TimeUnit.SECONDS.toNanos(5)) return VK_ERROR_DEVICE_LOST;
             }
         } catch (InterruptedException interrupted) {
+            request.cancelBeforeStart();
             Thread.currentThread().interrupt();
-            return false;
+            return VK_ERROR_DEVICE_LOST;
         }
-        if (copied.get() && ++copiedFrames == 1)
+        if (!copied.get()) return VK_ERROR_DEVICE_LOST;
+        if (++copiedFrames == 1)
             Log.i("DimensityVortek", "First GPU frame copied and completed; gameplay not yet validated");
-        return copied.get();
+        return VK_SUCCESS;
     }
 
     @Override public void handleNewConnection(Client client) { client.createIOStreams(); }

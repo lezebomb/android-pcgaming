@@ -423,15 +423,25 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     public void copyPresentedPixmap(Window window, Drawable source, int x, int y, Runnable completed) {
-        queueGpuCopy(window, source, x, y, true, copied -> completed.run());
+        queueGpuCopy(window, source, x, y, true, copied -> completed.run(), null);
     }
 
-    public void copyVulkanFrame(Window window, Drawable source, java.util.function.Consumer<Boolean> completed) {
-        queueGpuCopy(window, source, 0, 0, false, completed);
+    /** A queued copy can be cancelled only before it starts touching GPU state. */
+    public static final class GpuCopyRequest {
+        private final java.util.concurrent.atomic.AtomicInteger state = new java.util.concurrent.atomic.AtomicInteger();
+        private boolean begin() { return state.compareAndSet(0, 1); }
+        public boolean cancelBeforeStart() { return state.compareAndSet(0, 3); }
+        private void finish() { state.compareAndSet(1, 2); }
+    }
+
+    public GpuCopyRequest copyVulkanFrame(Window window, Drawable source, java.util.function.Consumer<Boolean> completed) {
+        GpuCopyRequest request = new GpuCopyRequest();
+        queueGpuCopy(window, source, 0, 0, false, completed, request);
+        return request;
     }
 
     private void queueGpuCopy(Window window, Drawable source, int x, int y, boolean x11BgraBytes,
-                              java.util.function.Consumer<Boolean> completed) {
+                              java.util.function.Consumer<Boolean> completed, GpuCopyRequest request) {
         final int copyNumber = ++presentCopyRequests;
         if (BuildConfig.DEBUG && copyNumber == 1) {
             xServerView.postDelayed(() -> {
@@ -455,6 +465,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         xServerView.queueEvent(() -> {
             boolean copied = false;
             try (XLock ignored = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
+                if (request != null && !request.begin()) return;
                 if (window.getContent() != destination) return;
                 synchronized (destination.renderLock) {
                     if (presentCopyFramebuffer == 0) {
@@ -477,6 +488,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                 markNewRealFrame();
             } finally {
                 if (copyNumber <= 3) Log.i("DimensityPresent", "GPU copy completed: " + copyNumber);
+                if (request != null) request.finish();
                 completed.accept(copied);
                 if (copyNumber <= 3) Log.i("DimensityPresent", "Present completion sent: " + copyNumber);
             }

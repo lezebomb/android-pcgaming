@@ -6,8 +6,8 @@ void getWindowExtent(JMethods* jmethods, int windowId, VkExtent2D* extent) {
     extent->height = (*jmethods->env)->CallIntMethod(jmethods->env, jmethods->obj, jmethods->getWindowHeight, windowId);
 }
 
-static AHardwareBuffer* getWindowHardwareBuffer(JMethods* jmethods, int windowId, jboolean useHALPixelFormatBGRA8888, uint64_t usage) {
-    jlong hardwareBufferPtr = (*jmethods->env)->CallLongMethod(jmethods->env, jmethods->obj, jmethods->getWindowHardwareBuffer, windowId, useHALPixelFormatBGRA8888, (jlong)usage);
+static AHardwareBuffer* getWindowHardwareBuffer(JMethods* jmethods, int windowId, jboolean useHALPixelFormatBGRA8888, uint64_t usage, uint64_t key) {
+    jlong hardwareBufferPtr = (*jmethods->env)->CallLongMethod(jmethods->env, jmethods->obj, jmethods->getWindowHardwareBuffer, windowId, useHALPixelFormatBGRA8888, (jlong)usage, (jlong)key);
     if ((*jmethods->env)->ExceptionCheck(jmethods->env)) {
         (*jmethods->env)->ExceptionClear(jmethods->env);
         return NULL;
@@ -101,7 +101,7 @@ static VkResult createImage(VkDevice device, XWindowSwapchain* swapchain, XWindo
     if (support != VK_SUCCESS) return support;
     if (swapchain->imageExtent.width > properties.maxExtent.width ||
         swapchain->imageExtent.height > properties.maxExtent.height) return VK_ERROR_FORMAT_NOT_SUPPORTED;
-    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId, JNI_FALSE, usage);
+    AHardwareBuffer* hardwareBuffer = getWindowHardwareBuffer(swapchain->jmethods, swapchain->windowId, JNI_FALSE, usage, (uint64_t)swapchain);
     if (!hardwareBuffer) return VK_ERROR_SURFACE_LOST_KHR;
 
     AHardwareBuffer_Desc ahbDesc = {0};
@@ -235,6 +235,7 @@ VkResult XWindowSwapchain_create(VkPhysicalDevice physicalDevice, VkDevice devic
     return VK_SUCCESS;
 
 error:
+    (*jmethods->env)->CallVoidMethod(jmethods->env, jmethods->obj, jmethods->releaseOutput, (jlong)swapchain);
     for (int i = 0; i < swapchain->imageCount; i++) {
         if (swapchain->images[i].image) vulkanWrapper.vkDestroyImage(device, swapchain->images[i].image, NULL);
         if (swapchain->images[i].memory) vulkanWrapper.vkFreeMemory(device, swapchain->images[i].memory, NULL);
@@ -247,6 +248,8 @@ error:
 
 void XWindowSwapchain_destroy(VkDevice device, XWindowSwapchain* swapchain) {
     if (!swapchain) return;
+    JMethods* methods = swapchain->jmethods;
+    (*methods->env)->CallVoidMethod(methods->env, methods->obj, methods->releaseOutput, (jlong)swapchain);
     for (int i = 0; i < swapchain->imageCount; i++) {
         vulkanWrapper.vkDestroyImage(device, swapchain->images[i].image, NULL);
         vulkanWrapper.vkFreeMemory(device, swapchain->images[i].memory, NULL);
@@ -287,6 +290,12 @@ static VkResult recordOwnershipTransfer(XWindowSwapchain* swapchain, bool acquir
 }
 
 VkResult XWindowSwapchain_acquireNextImage(XWindowSwapchain* swapchain, uint64_t timeout, VkSemaphore signalSemaphore, VkFence fence, uint32_t* imageIndex) {
+    VkExtent2D windowSize;
+    getWindowExtent(swapchain->jmethods, swapchain->windowId, &windowSize);
+    if (!windowSize.width || !windowSize.height) return VK_ERROR_SURFACE_LOST_KHR;
+    if (swapchain->imageExtent.width != windowSize.width || swapchain->imageExtent.height != windowSize.height)
+        return VK_ERROR_OUT_OF_DATE_KHR;
+    if (swapchain->acquired) return timeout == 0 ? VK_NOT_READY : VK_TIMEOUT;
     VkResult transferResult = recordOwnershipTransfer(swapchain, true);
     if (transferResult != VK_SUCCESS) return transferResult;
     {
@@ -302,21 +311,15 @@ VkResult XWindowSwapchain_acquireNextImage(XWindowSwapchain* swapchain, uint64_t
         VkResult result = vulkanWrapper.vkQueueSubmit(swapchain->queue, 1, &submitInfo, fence);
         if (result != VK_SUCCESS) return result;
         swapchain->everAcquired = true;
-    }
-
-    VkExtent2D windowSize;
-    getWindowExtent(swapchain->jmethods, swapchain->windowId, &windowSize);
-
-    VkResult result = VK_SUCCESS;
-    if (swapchain->imageExtent.width != windowSize.width || swapchain->imageExtent.height != windowSize.height) {
-        result = VK_ERROR_SURFACE_LOST_KHR;
+        swapchain->acquired = true;
     }
 
     *imageIndex = 0;
-    return result;
+    return VK_SUCCESS;
 }
 
 VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t waitCount, const VkSemaphore* waits) {
+    if (!swapchain->acquired) return VK_ERROR_OUT_OF_DATE_KHR;
     VkResult result = recordOwnershipTransfer(swapchain, false);
     if (result != VK_SUCCESS) return result;
     VkPipelineStageFlags* stages = waitCount ? calloc(waitCount, sizeof(VkPipelineStageFlags)) : NULL;
@@ -336,13 +339,14 @@ VkResult XWindowSwapchain_presentImage(XWindowSwapchain* swapchain, uint32_t wai
     // optimizations. The GL copy must see completed Vulkan writes.
     result = vulkanWrapper.vkQueueWaitIdle(swapchain->queue);
     if (result != VK_SUCCESS) return result;
+    swapchain->acquired = false;
     JNIEnv* env = swapchain->jmethods->env;
-    jboolean copied = (*env)->CallBooleanMethod(env, swapchain->jmethods->obj,
-                                                swapchain->jmethods->updateWindowContent, swapchain->windowId);
+    jint copied = (*env)->CallIntMethod(env, swapchain->jmethods->obj,
+            swapchain->jmethods->updateWindowContent, swapchain->windowId, (jlong)swapchain);
     if ((*env)->ExceptionCheck(env)) {
         (*env)->ExceptionClear(env);
         println("Vortek: Java compositor callback failed");
-        return VK_ERROR_SURFACE_LOST_KHR;
+        return VK_ERROR_DEVICE_LOST;
     }
-    return copied ? VK_SUCCESS : VK_ERROR_SURFACE_LOST_KHR;
+    return (VkResult)copied;
 }

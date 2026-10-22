@@ -124,6 +124,7 @@ typedef struct JMethods {
     jmethodID getWindowHeight;
     jmethodID getWindowHardwareBuffer;
     jmethodID updateWindowContent;
+    jmethodID releaseOutput;
 } JMethods;
 
 #else // VT_SERVER
