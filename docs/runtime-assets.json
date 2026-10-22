@@ -80,6 +80,13 @@
       "url": "https://raw.githubusercontent.com/GunaCharanTeja/WinlatorMali/fbf42d26411444249a301086da0dcb652b861b17/app/src/main/assets/dxwrapper/dxvk-1.12.1-sarek.tzst"
     },
     {
+      "path": "app/src/main/assets/dxwrapper/dxvk-1.14.1-sarek.tar.gz",
+      "size": 9821269,
+      "sha256": "07a6d5d889e9810ce856511e853cd72d2f547ec12c0dc5d7049b32e4bfa05c25",
+      "kind": "pinned-url",
+      "url": "https://github.com/pythonlover02/dxvk-sarek/releases/download/v1.14.1/dxvk-sarek-1.14.1.tar.gz"
+    },
+    {
       "path": "app/src/main/assets/dxwrapper/dxvk-1.5.5-async.tzst",
       "size": 2994419,
       "sha256": "559a8d86fdedcbc731e93a8ffbea9603800cdc76d6fe03df3ca63885289880c5",
@@ -273,8 +280,8 @@
     },
     {
       "path": "app/src/main/assets/vortek/libvulkan_vortek.so",
-      "size": 2192872,
-      "sha256": "95623bde6cd0250e60a0f1eec006f02af6d5e961ec72837d2b472ba1bc3c926c",
+      "size": 2195088,
+      "sha256": "c12ef4c7b6effacea7cae32acdea3d1e9c3076672c7e888dce33bf6f751b639c",
       "kind": "build",
       "script": "scripts/build-vortek-client.ps1"
     },

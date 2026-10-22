@@ -2,6 +2,7 @@
 #include "vulkan_helper.h"
 #include "spirv.h"
 #include "string_utils.h"
+#include "dimensity_spirv.h"
 
 #define PACK_SPV_INST(opcode, instLength) ((opcode << 0) | (instLength << SpvWordCountShift))
 #define ADD_SPV_INST(intArray, instLength, opcode, ...) \
@@ -89,31 +90,20 @@ static VkFormat getFallbackFormat(VkFormat format) {
     }
 }
 
-static void getSpvLiteralString(uint32_t* words, int instLength, char* outString) {
-    int numBit = 0;
-    for (int i = 0; i < instLength * 4; i++) {
-        outString[i] = (*words >> numBit) & 0xff;
-        if (outString[i] == '\0') break;
-
-        if ((numBit += 8) == 32) {
-            words++;
-            numBit = 0;
-        }
-    }
-}
-
-static uint32_t fetchSpvInstIndex(uint32_t* code, uint32_t sizeInBytes, int start, SpvOp targetOpcode, int field, uint32_t value, bool stopOnOpFunction) {
+static int fetchSpvInstIndex(const uint32_t* code, uint32_t sizeInBytes, int start, SpvOp targetOpcode, int field, uint32_t value, bool stopOnOpFunction) {
+    if (!code || start < 0 || sizeInBytes % sizeof(uint32_t)) return -1;
     uint32_t instLength;
     SpvOp opcode = SpvOpNop;
     SpvOp stopOpcode = stopOnOpFunction ? SpvOpFunction : SpvOpMax;
 
     for (int i = start, size = sizeInBytes / sizeof(int); i < size && opcode != stopOpcode;) {
         opcode = SPV_INST_OPCODE(code[i]);
-        instLength = SPV_INST_LENGTH(code[i]);
+        instLength = dgSpvInstructionLength(code, sizeInBytes / sizeof(uint32_t), i);
+        if (!instLength) return -1;
 
         if (opcode == targetOpcode) {
             if (field != -1) {
-                if (field < instLength && code[i+field] == value) return i;
+                if (field >= 0 && (uint32_t)field < instLength && code[i+field] == value) return i;
             }
             else return i;
         }
@@ -123,20 +113,24 @@ static uint32_t fetchSpvInstIndex(uint32_t* code, uint32_t sizeInBytes, int star
     return -1;
 }
 
-static uint32_t fetchSpvInstIndex2(uint32_t* code, uint32_t sizeInBytes, int start, SpvOp targetOpcode, SpvInstFilter* filter, bool stopOnOpFunction) {
+static int fetchSpvInstIndex2(const uint32_t* code, uint32_t sizeInBytes, int start, SpvOp targetOpcode, SpvInstFilter* filter, bool stopOnOpFunction) {
+    if (!code || start < 0 || sizeInBytes % sizeof(uint32_t)) return -1;
     uint32_t instLength;
     SpvOp opcode = SpvOpNop;
     SpvOp stopOpcode = stopOnOpFunction ? SpvOpFunction : SpvOpMax;
     int size = sizeInBytes / sizeof(int);
+    if (!filter || filter->count < 0 || filter->count > 4) return -1;
     int end = filter->endIndex > 0 && filter->endIndex < size ? filter->endIndex : size;
 
     for (int i = start, j; i < end && opcode != stopOpcode;) {
         opcode = SPV_INST_OPCODE(code[i]);
-        instLength = SPV_INST_LENGTH(code[i]);
+        instLength = dgSpvInstructionLength(code, sizeInBytes / sizeof(uint32_t), i);
+        if (!instLength) return -1;
 
         if (opcode == targetOpcode && filter->count < instLength) {
             bool match = true;
-            for (j = 0; j < filter->count && match; j++) match = code[i+filter->fields[j]] == filter->values[j];
+            for (j = 0; j < filter->count && match; j++)
+                match = filter->fields[j] < instLength && code[i+filter->fields[j]] == filter->values[j];
             if (match) return i;
         }
 
@@ -146,26 +140,28 @@ static uint32_t fetchSpvInstIndex2(uint32_t* code, uint32_t sizeInBytes, int sta
     return -1;
 }
 
-static void getSpvVariableName(uint32_t* code, uint32_t sizeInBytes, int varId, char* outName) {
+static void getSpvVariableName(const uint32_t* code, uint32_t sizeInBytes, int varId, char* outName, size_t capacity) {
     int index = fetchSpvInstIndex(code, sizeInBytes, CODE_START, SpvOpName, 1, varId, true);
     outName[0] = '\0';
     if (index != -1) {
         int strLen = SPV_INST_LENGTH(code[index]) - 2;
-        getSpvLiteralString(&code[index+2], strLen, outName);
+        dgSpvLiteralString(&code[index+2], strLen, outName, capacity);
     }
 }
 
-static uint32_t fetchSpvOpTypeIndex(uint32_t* code, uint32_t sizeInBytes, int start, int field, uint32_t value) {
+static int fetchSpvOpTypeIndex(const uint32_t* code, uint32_t sizeInBytes, int start, int field, uint32_t value) {
+    if (!code || start < 0 || sizeInBytes % sizeof(uint32_t)) return -1;
     uint32_t instLength;
     SpvOp opcode = SpvOpNop;
 
     for (int i = start, size = sizeInBytes / sizeof(int); i < size && opcode != SpvOpFunction;) {
         opcode = SPV_INST_OPCODE(code[i]);
-        instLength = SPV_INST_LENGTH(code[i]);
+        instLength = dgSpvInstructionLength(code, sizeInBytes / sizeof(uint32_t), i);
+        if (!instLength) return -1;
 
         if (IS_SPV_OP_TYPE(opcode)) {
             if (field != -1) {
-                if (field < instLength && code[i+field] == value) return i;
+                if (field >= 0 && (uint32_t)field < instLength && code[i+field] == value) return i;
             }
             else return i;
         }
@@ -179,11 +175,12 @@ static void fetchSpvVariableOffsets(ShaderModule* module, SpvStorageClass storag
     uint32_t instLength;
     SpvOp opcode = SpvOpNop;
     char varname[32] = {0};
-    char location[8] = {0};
+    char location[12] = {0};
 
     for (int i = CODE_START, j, k, l, size = module->codeSize / sizeof(uint32_t); i < size && opcode != SpvOpFunction && !IS_SPV_OP_TYPE(opcode);) {
         opcode = SPV_INST_OPCODE(module->code[i]);
-        instLength = SPV_INST_LENGTH(module->code[i]);
+        instLength = dgSpvInstructionLength(module->code, module->codeSize / sizeof(uint32_t), i);
+        if (!instLength) break;
 
         if (opcode == SpvOpDecorate && module->code[i+2] == SpvDecorationLocation) {
             j = fetchSpvInstIndex(module->code, module->codeSize, i, SpvOpVariable, 2, module->code[i+1], true);
@@ -193,9 +190,9 @@ static void fetchSpvVariableOffsets(ShaderModule* module, SpvStorageClass storag
                     l = fetchSpvInstIndex(module->code, module->codeSize, i, SpvOpTypeVector, 1, module->code[k+3], true);
                     if (l == -1) l = fetchSpvInstIndex(module->code, module->codeSize, i, SpvOpTypeFloat, 1, module->code[k+3], true);
                     if (l != -1) {
-                        getSpvVariableName(module->code, module->codeSize, module->code[j+2], varname);
+                        getSpvVariableName(module->code, module->codeSize, module->code[j+2], varname, sizeof(varname));
                         if ((varname[0] == 'o' || varname[0] == 'v')) {
-                            sprintf(location, "%d", module->code[i+3]);
+                            snprintf(location, sizeof(location), "%u", module->code[i+3]);
                             if (strcmp(varname + 1, location) == 0) {
                                 SpvVariableOffsets* variableOffsets = calloc(1, sizeof(SpvVariableOffsets));
                                 variableOffsets->decorate = i;
@@ -227,7 +224,7 @@ static uint32_t mergeSpvInst(MergeSpvInstOptions* options, uint32_t instLength, 
             MergeCode* mergeCode = options->mergeCodes->elements[i];
             int oldEndIndex = options->fetchFilter.endIndex;
             options->fetchFilter.endIndex = 0;
-            index = fetchSpvInstIndex2(mergeCode->code.values, mergeCode->code.size * sizeof(int), 0, opcode, &options->fetchFilter, false);
+            index = fetchSpvInstIndex2((uint32_t*)mergeCode->code.values, mergeCode->code.size * sizeof(int), 0, opcode, &options->fetchFilter, false);
             options->fetchFilter.endIndex = oldEndIndex;
             if (index != -1) {
                 resultId = mergeCode->code.values[index+1];
@@ -418,7 +415,8 @@ static void inspectVertexShaderCode(ShaderInspector* shaderInspector, ShaderModu
 
     for (int i = CODE_START, size = module->codeSize / sizeof(uint32_t); i < size && opcode != SpvOpFunction && !IS_SPV_OP_TYPE(opcode);) {
         opcode = SPV_INST_OPCODE(module->code[i]);
-        instLength = SPV_INST_LENGTH(module->code[i]);
+        instLength = dgSpvInstructionLength(module->code, module->codeSize / sizeof(uint32_t), i);
+        if (!instLength) break;
 
         if (opcode == SpvOpCapability) {
             if (shaderInspector->checkClipDistance && module->code[i+1] == SpvCapabilityClipDistance) IntArray_add(&removeInsts, i);
@@ -442,7 +440,8 @@ static void inspectVertexShaderCode(ShaderInspector* shaderInspector, ShaderModu
         opcode = SpvOpNop;
         for (int i = CODE_START, j, size = module->codeSize / sizeof(uint32_t); i < size && opcode != SpvOpFunction && !IS_SPV_OP_TYPE(opcode);) {
             opcode = SPV_INST_OPCODE(module->code[i]);
-            instLength = SPV_INST_LENGTH(module->code[i]);
+            instLength = dgSpvInstructionLength(module->code, module->codeSize / sizeof(uint32_t), i);
+        if (!instLength) break;
 
             if (opcode == SpvOpDecorate && module->code[i+2] == SpvDecorationLocation) {
                 uint32_t location = module->code[i+3];
@@ -551,7 +550,8 @@ static void removeImageBoundCheck(uint32_t* code, uint32_t codeSize) {
 
     for (int i = CODE_START, size = codeSize / sizeof(uint32_t); i < size;) {
         opcode = SPV_INST_OPCODE(code[i]);
-        instLength = SPV_INST_LENGTH(code[i]);
+        instLength = dgSpvInstructionLength(code, codeSize / sizeof(uint32_t), i);
+        if (!instLength) return;
 
         if (opcode == SpvOpSampledImage || opcode == SpvOpImageFetch) {
             inspectOpSelect = true;
@@ -561,7 +561,7 @@ static void removeImageBoundCheck(uint32_t* code, uint32_t codeSize) {
             uint32_t* object2Id = &code[i+5];
             int index = fetchSpvInstIndex(code, codeSize, CODE_START, SpvOpConstantComposite, 2, *object2Id, true);
 
-            uint32_t scalarId = index != -1 ? code[index+3] : *object2Id;
+            uint32_t scalarId = index != -1 && SPV_INST_LENGTH(code[index]) >= 4 ? code[index+3] : *object2Id;
             index = fetchSpvInstIndex(code, codeSize, CODE_START, SpvOpConstant, 2, scalarId, true);
             if (index != -1) {
                 uint32_t constValue = code[index+3];
@@ -579,7 +579,7 @@ static void removeImageBoundCheck(uint32_t* code, uint32_t codeSize) {
 }
 
 static SpvExecutionModel getSpvExecutionModel(const uint32_t* code, uint32_t sizeInBytes) {
-    if (code[0] != SpvMagicNumber) return SpvExecutionModelMax;
+    if (!dgSpvModuleBounds(code, sizeInBytes)) return SpvExecutionModelMax;
     int index = fetchSpvInstIndex(code, sizeInBytes, CODE_START, SpvOpEntryPoint, -1, 0, true);
     return index != -1 ? code[index+1] : SpvExecutionModelMax;
 }
@@ -601,91 +601,99 @@ ShaderInspector* ShaderInspector_create(VkContext* context, VkPhysicalDevice phy
     return shaderInspector;
 }
 
-VkResult ShaderInspector_createModule(ShaderInspector* shaderInspector, VkDevice device, const uint32_t* code, size_t codeSize, ShaderModule** ppModule) {
-    ShaderModule* shaderModule = calloc(1, sizeof(ShaderModule));
-    shaderModule->module = VK_NULL_HANDLE;
-    SpvExecutionModel executionModel = getSpvExecutionModel(code, codeSize);
-
-    if (shaderInspector->removeImageBoundCheck && (executionModel == SpvExecutionModelVertex || executionModel == SpvExecutionModelFragment)) {
-        removeImageBoundCheck(code, codeSize);
-    }
-
+VkResult ShaderInspector_createModule(ShaderInspector* inspector, VkDevice device, const uint32_t* code, size_t codeSize, ShaderModule** ppModule) {
+    *ppModule = NULL;
+    if (!inspector || !dgSpvModuleBounds(code, codeSize)) return VK_ERROR_UNKNOWN;
+    ShaderModule* module = calloc(1, sizeof(*module));
+    if (!module) return VK_ERROR_OUT_OF_HOST_MEMORY;
+    SpvExecutionModel model = getSpvExecutionModel(code, codeSize);
     VkResult result = VK_SUCCESS;
-    if (executionModel == SpvExecutionModelVertex || executionModel == SpvExecutionModelFragment) {
-        shaderModule->codeSize = codeSize;
-        shaderModule->code = memdup(code, codeSize);
+    if (model == SpvExecutionModelVertex || model == SpvExecutionModelFragment) {
+        module->code = memdup(code, codeSize);
+        if (!module->code) { free(module); return VK_ERROR_OUT_OF_HOST_MEMORY; }
+        module->codeSize = codeSize;
+        // The API input may be read-only/shared. Patch only our owned copy,
+        // then retain it unchanged for every pipeline that uses this module.
+        if (inspector->removeImageBoundCheck) removeImageBoundCheck(module->code, codeSize);
     }
     else {
-        VkShaderModuleCreateInfo createInfo = {0};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.pCode = code;
-        createInfo.codeSize = codeSize;
-        result = vulkanWrapper.vkCreateShaderModule(device, &createInfo, NULL, &shaderModule->module);
+        VkShaderModuleCreateInfo info = {0};
+        info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        info.pCode = code;
+        info.codeSize = codeSize;
+        result = vulkanWrapper.vkCreateShaderModule(device, &info, NULL, &module->module);
     }
-
-    *ppModule = shaderModule;
-    return result;
+    if (result != VK_SUCCESS) { free(module); return result; }
+    *ppModule = module;
+    return VK_SUCCESS;
 }
 
-VkResult ShaderInspector_inspectShaderStages(ShaderInspector* shaderInspector, VkDevice device, VkPipelineShaderStageCreateInfo* stageInfos, uint32_t stageCount, const VkPipelineVertexInputStateCreateInfo* vertexInputState) {
+VkResult ShaderInspector_inspectShaderStages(ShaderInspector* inspector, VkDevice device,
+        VkPipelineShaderStageCreateInfo* stages, uint32_t count,
+        const VkPipelineVertexInputStateCreateInfo* vertexInput, ArrayList* temporaryModules) {
+    if (!inspector || !stages || !count || !temporaryModules) return VK_ERROR_UNKNOWN;
+    ShaderModule* local = calloc(count, sizeof(*local));
+    if (!local) return VK_ERROR_OUT_OF_HOST_MEMORY;
     VkResult result = VK_SUCCESS;
-    ShaderModule* vertexShaderModule = NULL;
-
-    for (int i = 0, j; i < stageCount; i++) {
-        VkPipelineShaderStageCreateInfo* stageInfo = &stageInfos[i];
-        ShaderModule* shaderModule = (ShaderModule*)stageInfo->module;
-        if (!shaderModule) continue;
-
-        if (!shaderModule->module) {
-            if (stageInfo->stage == VK_SHADER_STAGE_VERTEX_BIT) {
-                if (vertexInputState) {
-                    VertexAnnotation vertexAnnotations[vertexInputState->vertexAttributeDescriptionCount];
-                    int vertexAnnotationCount = 0;
-
-                    for (j = 0; j < vertexInputState->vertexAttributeDescriptionCount; j++) {
-                        VkVertexInputAttributeDescription* attributeDescription = (VkVertexInputAttributeDescription*)&vertexInputState->pVertexAttributeDescriptions[j];
-                        if (isFormatScaled(attributeDescription->format)) {
-                            attributeDescription->format = getFallbackFormat(attributeDescription->format);
-
-                            VertexAnnotation* vertexAnnotation = &vertexAnnotations[vertexAnnotationCount++];
-                            vertexAnnotation->location = attributeDescription->location;
-                            vertexAnnotation->format = attributeDescription->format;
-                            vertexAnnotation->vecId = -1;
-                            vertexAnnotation->varId = -1;
-                            vertexAnnotation->varOffset = -1;
-                        }
-                    }
-
-                    inspectVertexShaderCode(shaderInspector, shaderModule, vertexAnnotations, vertexAnnotationCount);
-                }
-
-                vertexShaderModule = shaderModule;
-            }
-            else if (stageInfo->stage == VK_SHADER_STAGE_FRAGMENT_BIT && vertexShaderModule) {
-                inspectFragmentShaderCode(shaderInspector, vertexShaderModule, shaderModule);
-            }
-
-            VkShaderModuleCreateInfo moduleInfo = {0};
-            moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-            moduleInfo.pCode = shaderModule->code;
-            moduleInfo.codeSize = shaderModule->codeSize;
-            result = vulkanWrapper.vkCreateShaderModule(device, &moduleInfo, NULL, &shaderModule->module);
-            if (result != VK_SUCCESS) break;
+    ShaderModule* vertex = NULL;
+    // Clone all source before conversion: pipeline requests may run concurrently
+    // and may use the same shader with different scaled vertex attributes.
+    for (uint32_t i = 0; i < count; i++) {
+        ShaderModule* original = (ShaderModule*)stages[i].module;
+        if (!original) { result = VK_ERROR_UNKNOWN; goto done; }
+        if (original->module) local[i].module = original->module;
+        else {
+            if (!dgSpvModuleBounds(original->code, original->codeSize)) { result = VK_ERROR_UNKNOWN; goto done; }
+            local[i].code = memdup(original->code, original->codeSize);
+            if (!local[i].code) { result = VK_ERROR_OUT_OF_HOST_MEMORY; goto done; }
+            local[i].codeSize = original->codeSize;
         }
+        if (stages[i].stage == VK_SHADER_STAGE_VERTEX_BIT && local[i].code) vertex = &local[i];
     }
-
-    for (int i = 0; i < stageCount; i++) {
-        VkPipelineShaderStageCreateInfo* stageInfo = &stageInfos[i];
-        ShaderModule* shaderModule = (ShaderModule*)stageInfo->module;
-        if (!shaderModule) continue;
-
-        MEMFREE(shaderModule->code);
-        shaderModule->codeSize = 0;
-        stageInfo->module = shaderModule->module;
+    // Vulkan does not require the vertex stage to precede the fragment stage.
+    if (vertex) {
+        uint32_t attributes = vertexInput ? vertexInput->vertexAttributeDescriptionCount : 0;
+        VertexAnnotation* annotations = attributes ? calloc(attributes, sizeof(*annotations)) : NULL;
+        if (attributes && !annotations) { result = VK_ERROR_OUT_OF_HOST_MEMORY; goto done; }
+        if (attributes && !vertexInput->pVertexAttributeDescriptions) {
+            free(annotations); result = VK_ERROR_UNKNOWN; goto done;
+        }
+        int annotationCount = 0;
+        for (uint32_t j = 0; j < attributes; j++) {
+            VkVertexInputAttributeDescription* attribute = (VkVertexInputAttributeDescription*)&vertexInput->pVertexAttributeDescriptions[j];
+            if (isFormatScaled(attribute->format)) {
+                attribute->format = getFallbackFormat(attribute->format);
+                VertexAnnotation* annotation = &annotations[annotationCount++];
+                annotation->location = attribute->location;
+                annotation->format = attribute->format;
+                annotation->vecId = annotation->varId = annotation->varOffset = -1;
+            }
+        }
+        inspectVertexShaderCode(inspector, vertex, annotations, annotationCount);
+        free(annotations);
     }
-
+    for (uint32_t i = 0; i < count; i++) {
+        ShaderModule* module = &local[i];
+        if (module->code) {
+            if (stages[i].stage == VK_SHADER_STAGE_FRAGMENT_BIT && vertex)
+                inspectFragmentShaderCode(inspector, vertex, module);
+            if (!dgSpvModuleBounds(module->code, module->codeSize)) { result = VK_ERROR_UNKNOWN; goto done; }
+            VkShaderModuleCreateInfo info = {0};
+            info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+            info.pCode = module->code;
+            info.codeSize = module->codeSize;
+            result = vulkanWrapper.vkCreateShaderModule(device, &info, NULL, &module->module);
+            if (result != VK_SUCCESS) goto done;
+            ArrayList_add(temporaryModules, (void*)module->module);
+        }
+        stages[i].module = module->module;
+    }
+done:
+    for (uint32_t i = 0; i < count; i++) free(local[i].code);
+    free(local);
     return result;
 }
+
 
 bool isFormatScaled(VkFormat format) {
     switch (format) {

@@ -19,13 +19,16 @@ static bool isExternalMemoryHandleTypeSupported(VkPhysicalDevice physicalDevice,
     VkPhysicalDeviceExternalBufferInfo bufferInfo = {0};
     bufferInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO;
     bufferInfo.handleType = handleType;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     VkExternalBufferProperties bufferProperties = {0};
     bufferProperties.sType = VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES;
     vulkanWrapper.vkGetPhysicalDeviceExternalBufferProperties(physicalDevice, &bufferInfo, &bufferProperties);
     VkExternalMemoryProperties* memoryProperties = &bufferProperties.externalMemoryProperties;
 
-    return (memoryProperties->externalMemoryFeatures & (VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT | VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT)) != 0 &&
+    VkExternalMemoryFeatureFlags required = handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT
+            ? VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT : VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+    return (memoryProperties->externalMemoryFeatures & required) == required &&
            (memoryProperties->compatibleHandleTypes & handleType) != 0;
 }
 
@@ -156,7 +159,7 @@ uint32_t getMemoryPropertyFlags(uint32_t memoryTypeIndex) {
 bool isHostVisibleMemory(uint32_t memoryTypeIndex) {
     if (deviceMemoryInfo.memoryTypeCount == 0 || memoryTypeIndex >= deviceMemoryInfo.memoryTypeCount) return false;
     VkMemoryType* memoryType = &deviceMemoryInfo.memoryTypes[memoryTypeIndex];
-    return memoryType->propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+    return (memoryType->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
 }
 
 void injectExtensions(VkContext* context, char*** extensions, uint32_t* extensionCount, const char* const* extraExtensions, uint32_t extraExtensionCount, const char* const* skipExtensions, uint32_t skipExtensionCount) {
@@ -478,7 +481,7 @@ void destroyVkObject(VkObjectType type, VkDevice device, void* handle) {
             break;
         case VK_OBJECT_TYPE_SHADER_MODULE: {
             ShaderModule* shaderModule = handle;
-            vulkanWrapper.vkDestroyShaderModule(device, shaderModule->module, NULL);
+            if (shaderModule->module) vulkanWrapper.vkDestroyShaderModule(device, shaderModule->module, NULL);
             MEMFREE(shaderModule->code);
             MEMFREE(shaderModule);
             break;

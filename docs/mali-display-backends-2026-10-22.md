@@ -13,7 +13,7 @@
 
 本地源码对照：upstream/winlator根记录的客户端commit b1730c5def9b575672e671aee11d79ae7adc63d1，app子模块a030f552f452158a2db64fdb32b490fa19c0b48d。原始客户端178930bytes，SHA256eef892505c77fb6f3cc7bc78a151662ffb77bab934e5eeff8ead7270a6734c82。客户端/服务端serializer正规化换行后完全一致（2761a1cad4c6812004e57c210b57507800b64b28ba33824b936d9daa37461253）。GameNative旧Java接口只有(I)J，但该Winlator服务端要求(IZ)J，不能混接。
 
-目前已集成配套Bionic客户端、Android服务端、Xlib/XCB surface、每游戏回退选择与GPU专用AHB呈现，缓存及socket均在本应用目录；不依赖其他应用的私有目录。当前客户端SHA256为95623bde6cd0250e60a0f1eec006f02af6d5e961ec72837d2b472ba1bc3c926c。构建来源与配套确认规则见源码准备脚本和source-lock。离线构建不等于实机显示通过。
+目前已集成配套Bionic客户端、Android服务端、Xlib/XCB surface、每游戏回退选择与GPU专用AHB呈现，缓存及socket均在本应用目录；不依赖其他应用的私有目录。当前客户端SHA256为0a472ab04badb7989f422dab8d304be245effaad857bdefe9138c240b0c44a0f。构建来源与配套确认规则见源码准备脚本和source-lock。离线构建不等于实机显示通过。
 
 Qt黑屏最新等待栈显示Java GLThread正常wait、XConnector在epoll；原生WSI queue没有待提交图片、event线程在condition等待，故暂没有证据证明“Present事件丢失”是该Qt会话原因。不要仅因服务端缺NotifyMSC就冒称定位成功；原库WSI源码没调用它。独立的引擎shader越界证据仍然成立。
 
@@ -53,3 +53,27 @@ BC6/7、GPU生成压缩数据、BC编码读回和块视图重解释尚未实现�
 上游将普通Fence等待转成SYNC_FD导出，导出会影响payload，已完成时还可能返回-1，原传FD路径没有正确处理。0.1.34改为原生GetFenceStatus轮询，等待期间不持全局IPC锁，用单调纳秒截止；取消强制export，ResetFences返回真实结果。依据：[vkGetFenceFdKHR](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetFenceFdKHR.html)。
 
 该次实机已从相同初始化黑屏进入Warzone第一关，地形/车辆/HUD可见，虚拟手柄关闭指南并选取7单位。移动与战斗尚未证明；HUD显示的0 FPS未校准，不能据此报告实际帧率。短会话由有3分钟上限的helper关闭，未作长稳验收。Vortek仍缺完整BC6/7和DX12能力，不继承另一条Mali层的通过结论。
+
+## 0.1.35：显存结构传输修正
+
+Superposition/DXVK实机日志出现第二堆随机flags。上游数组把native sizeof16的VkMemoryHeap按wire12字节整段memcpy，导致后续堆错位；预算数组又将元素数量当字节数量。现逐项传输堆、完整传输VkDeviceSize预算数组，客户/服务端统一reply v4。直接编译产品serializer在平板自己UID检查二堆与最后预算项通过；新DXVK日志flags已有效，Qt仍0xc0000005，无benchmark场景。新2.3.1另因缺VK_EXT_robustness2而失败，不伪装扩展或渲染成功。
+
+### 离线候选 0.1.36：共享内存路径
+
+修正AHB BLOB缺GPU_DATA_BUFFER、未查询memoryTypeBits/allocationSize、静默改内存类型和覆盖pNext的问题；保留DEVICE_ADDRESS和游戏实际资源的dedicated信息，移除绑定到虚拟占位buffer的错误dedication。按最终原生大小复查预算，返回实际错误。DMA-BUF查询导入类型；fd=0作为有效描述符。客户端映射大小改64位，修正VK_WHOLE_SIZE偏移、非页对齐offset、placed pointer/保留地址空间、失败fd与free时映射回收。
+
+规则依据：[Vulkan内存分配](https://docs.vulkan.org/refpages/latest/refpages/source/VkMemoryAllocateInfo.html)、[专用分配](https://docs.vulkan.org/refpages/latest/refpages/source/VkMemoryDedicatedAllocateInfo.html)、[fd属性查询](https://docs.vulkan.org/refpages/latest/refpages/source/vkGetMemoryFdPropertiesKHR.html)。此次离线修改不代表已解决Superposition异常或完成AAA验收；资源创建的external handle声明及非coherent缓存维护仍需继续核查。
+
+### 离线候选 0.1.37：shader复用与管线错误
+
+上游首次管线会修改ShaderModule共享源码并在结束时释放，之后不同顶点布局沿用首次生成的模块；并发管线也会写同一份源码。现保留模块拥有的原始SPIR-V，每次管线使用私有转换副本，按顶点/片元依赖处理而不依赖stage排列，临时原生shader在管线创建完成后释放。编译失败阻止继续调用原生管线创建，避免传入未完成的模块。
+
+SPIR-V增加零长度/越界指令及所读取操作数的界限检查，OpName复制带容量与结束符检查，Location数字缓冲支持完整uint32。它不是完整SPIR-V验证器。管线回复改准确读写循环及小块传输，处理fd=0/句柄0、断开连接与SIGPIPE，不再用大batch栈数组；消息的字节结构保持不变。私有转换可能增加模块创建开销，实际性能与图形结果待实机。
+
+### 离线候选 0.1.38：原生映射生命周期
+
+此前只有guest的fd mmap，没有调用驱动vkMapMemory，却直接转发Flush/Invalidate。现首次guest Map建立原生整段映射并保留到allocation释放前，再unmap；native Map失败通过不含fd的错误回复返回，避免用无效fd发送而卡住等待。依据：[VkMappedMemoryRange 00684](https://docs.vulkan.org/refpages/latest/refpages/source/VkMappedMemoryRange.html)。这是原生调用有效性修正；跨进程noncoherent别名缓存的实际行为仍需Mali实机检查，不伪造HOST_COHERENT、不声称黑屏全部解决。
+
+### 离线0.1.39：开发者Sarek补丁参考
+
+已从作者源码确认ARM未绑定纹理优化开关、Clip/Cull能力门控与新版分配器，并把固定1.14.1原发布包作为可选图形版本接入，保留物理ARM标识。同步编译用于初次画面对比，默认旧版本不变。详见 [来源、许可证与边界](dxvk-sarek-1.14.1.md)。当前只是build/v2与解包短查，不是实机显示通过。

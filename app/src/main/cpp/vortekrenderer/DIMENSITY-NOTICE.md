@@ -26,3 +26,29 @@ index. Native fence status polling replaces destructive SYNC_FD export waits.
 Outputs and ownership commands are separate per swapchain image (2–3 images);
 import uses queried driver AHB usage and exact RGBA8_UNORM. Real Warzone first
 level rendering was observed; full gameplay and AAA compatibility remain open.
+
+Reply protocol v4 serializes padded VkMemoryHeap arrays element by element
+and transfers complete VkDeviceSize memory-budget arrays. Preparation uses
+a shared deterministic patch; both client and server must be updated together.
+
+Offline memory-path corrections preserve allocation flags and real resource
+dedication, validate imported AHB/DMA-BUF memory types, account the queried
+AHB size, and preserve native errors. AHB BLOB imports use GPU_DATA_BUFFER.
+The guest stores 64-bit allocation sizes, aligns mmap ranges to OS pages,
+subtracts offsets for VK_WHOLE_SIZE, returns placed pointers, and releases
+fds/mappings on failure/free. These changes do not prove game rendering.
+
+Shader sources remain owned and immutable for their lifetime. Each graphics
+pipeline gets private converted stage copies, including stage-order independent
+vertex/fragment inspection; temporary native modules live through pipeline
+creation and are then destroyed. Inspection failures stop driver pipeline
+creation and propagate as errors. SPIR-V parsing checks operand/word bounds
+and destination string capacity. These are bounds checks, not full validation.
+Pipeline replies use exact stream reads/writes, bounded chunks, no SIGPIPE
+on a closed result socket, and native null pipeline handles remain null.
+
+The first guest map now establishes a persistent native vkMapMemory mapping
+for that allocation; forwarded flush/invalidate calls no longer target an
+unmapped VkDeviceMemory. Free unmaps it first. Native map errors are returned
+without an invalid SCM_RIGHTS fd. Cross-process noncoherent cache behavior
+still requires real-device verification; no coherence feature is fabricated.

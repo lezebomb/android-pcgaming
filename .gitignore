@@ -75,3 +75,6 @@ Thumbs.db
 /.codex/
 /.agents/
 
+# Bundled dependency archives are restored from pinned public sources.
+*.tar.gz
+*.tgz

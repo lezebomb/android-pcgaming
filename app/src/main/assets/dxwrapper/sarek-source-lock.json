@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/pythonlover02/DXVK-Sarek",
+  "tag": "v1.14.1",
+  "commit": "0c0e8f6f62c7cb37dbf5d38413517efa00c08fef",
+  "releaseUrl": "https://github.com/pythonlover02/dxvk-sarek/releases/tag/v1.14.1",
+  "url": "https://github.com/pythonlover02/dxvk-sarek/releases/download/v1.14.1/dxvk-sarek-1.14.1.tar.gz",
+  "archiveSha256": "07a6d5d889e9810ce856511e853cd72d2f547ec12c0dc5d7049b32e4bfa05c25",
+  "size": 9821269,
+  "license": "Zlib (see docs/licenses/DXVK-Sarek-LICENSE and archive LICENSE)",
+  "status": "opt-in upstream binary release; not device validated",
+  "changes": "No DLL modifications; synchronous shader compilation selected for initial rendering validation"
+}

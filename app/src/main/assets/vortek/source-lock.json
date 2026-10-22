@@ -7,13 +7,17 @@
     "Explicit Android guest-client build role",
     "Session-owned socket from environment; no other app path",
     "Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions",
-    "Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged"
+    "Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged",
+    "64-bit memory mapping, checked page-aligned fd ranges, placed-map reservation and fd/mapping cleanup",
+    "Exact streaming pipeline replies; null native pipeline handles remain null"
   ],
   "preparedSha256": {
-    "header": "9598657d54ae3aec4f97080ec8608fb69d08b42c359358d1437e72df042ff4b6",
+    "header": "609b481998da7de21e820a5fa59e353545b5881b14630396cfff185abac87965",
     "main": "1af03fa1afe49e79c38ee338828c294f9a95cd41c6b40adc7a884700460b712a",
-    "calls": "6c91eceed2e662583d80036d815bd76ae3bebe1a145a2aff8c8ccf00a1661f33"
+    "calls": "a17a59ae53175cab0ee008708bd9c08b222489c7b92f08a42e96da204600bb3d",
+    "serializer": "91681f0ebe619db601ccedb68661b9d9361ac92a56e56cc4287b72d250dd93bb",
+    "mapping": "bb4a6ed61955b7dc5b7d71b9403c4768d117ddfbb9970fd486b0ed598c86244c"
   },
-  "protocol": "Dimensity reply v3 (WSI v2, reset-fence ack, native fence-status polling); use paired server",
+  "protocol": "Dimensity reply v4 (v3 plus element-wise heaps/full memory budgets); use paired server",
   "status": "optional per-game backend; offline build only, not validated on device"
 }

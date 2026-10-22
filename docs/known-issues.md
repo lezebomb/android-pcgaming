@@ -33,3 +33,13 @@
 24. 0.1.33用独立AHB/所有权命令支持2–3个交换链图像并轮转Acquire；实机Warzone的>=2断言消失，但仍黑屏，Fence等待异常待查。
 
 25. 0.1.34修正Vortek Fence等待的SYNC_FD转移语义与-1已完成处理问题，改为短锁GetFenceStatus轮询，单调纳秒截止；取消强制导出，ResetFences真实结果ack。相同实机场景已进入Warzone第一关并显示3D与手柄选单位，仍无完整移动/战斗及长稳验收；DX12/BC6/7限制仍在。
+
+26. 0.1.35客户/服务端成对纠正MemoryHeap数组native padding和完整64位预算数组，协议reply v4，不能混搭旧客户端。实际二堆元数据已正常；Superposition Qt访问异常仍未修复，DXVK2.3.1还缺robustness2。
+
+27. 离线0.1.36修正Vortek导入内存参数与大于2GB映射，尚未安装实机复查；资源external handle声明与非coherent缓存维护仍有待核查，不能将内存修正视为黑屏全部根因。
+
+28. 离线0.1.37修正shader源码复用/并发修改、编译错误传播、SPIR-V越界及管线回复；尚未安装，不证明Superposition异常或黑屏已解决。每管线私有模块的性能开销待设备观察。
+
+29. 离线0.1.38补齐guest Map对应的原生vkMapMemory生命周期；非coherent跨进程缓存一致性尚待设备验证，external resource创建声明仍待进一步适配。
+
+30. 0.1.39加入可选Sarek1.14.1原版DLL与Mali识别，只有离线构建/解包结果，未实机验收；DX12/艾尔登接口初始化仍未解决。详见dxvk-sarek-1.14.1.md。

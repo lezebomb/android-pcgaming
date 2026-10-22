@@ -18,7 +18,7 @@ typedef struct ShaderInspector {
 } ShaderInspector;
 
 extern ShaderInspector* ShaderInspector_create(VkContext* context, VkPhysicalDevice physicalDevice, VkPhysicalDeviceFeatures* supportedFeatures);
-extern VkResult ShaderInspector_inspectShaderStages(ShaderInspector* shaderInspector, VkDevice device, VkPipelineShaderStageCreateInfo* stageInfos, uint32_t stageCount, const VkPipelineVertexInputStateCreateInfo* vertexInputState);
+extern VkResult ShaderInspector_inspectShaderStages(ShaderInspector* shaderInspector, VkDevice device, VkPipelineShaderStageCreateInfo* stageInfos, uint32_t stageCount, const VkPipelineVertexInputStateCreateInfo* vertexInputState, ArrayList* temporaryModules);
 extern VkResult ShaderInspector_createModule(ShaderInspector* shaderInspector, VkDevice device, const uint32_t* code, size_t codeSize, ShaderModule** ppModule);
 extern bool isFormatScaled(VkFormat format);
 

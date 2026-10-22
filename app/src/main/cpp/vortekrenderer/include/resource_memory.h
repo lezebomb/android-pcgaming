@@ -14,13 +14,15 @@ typedef enum ResourceMemoryType {
 
 typedef struct ResourceMemory {
     int fd;
+    VkDevice device;
+    bool hostMapped;
     AHardwareBuffer* hardwareBuffer;
-    VkBuffer buffer;
     VkDeviceMemory memory;
     VkDeviceSize allocationSize;
 } ResourceMemory;
 
-extern ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, VkMemoryAllocateInfo* memoryInfo);
+extern ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, const VkMemoryAllocateInfo* memoryInfo, VkResult* result);
+extern VkResult ResourceMemory_map(ResourceMemory* resourceMemory);
 extern void ResourceMemory_free(VkContext* context, VkDevice device, ResourceMemory* resourceMemory);
 
 #endif

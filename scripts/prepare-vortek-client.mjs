@@ -1,6 +1,8 @@
 // Prepare the exact client paired with upstream Winlator app a030f552.
 // The host server and Android UI integration remain separate; this is not a display pass.
 import fs from 'node:fs';
+import {patchMemoryWire} from './lib/vortek-memory-wire.mjs';
+import {patchMapMemory} from './lib/vortek-map-memory.mjs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 const root='.tooling/vortek-source',out='artifacts/vortek';
@@ -21,8 +23,10 @@ const server='app/src/main/cpp/vortekrenderer/include';
 const normalized=file=>fs.readFileSync(file,'utf8').replaceAll('\r\n','\n');
 const hostSerializer=normalized(`${server}/vortek_serializer.h`).replaceAll(
   'vt_hostImageLayout(*(VkImageLayout*)(inputBuffer + bufferOffset))','*(VkImageLayout*)(inputBuffer + bufferOffset)');
-if(normalized(`${root}/include/vortek_serializer.h`)!==hostSerializer)
+const clientSerializer=patchMemoryWire(normalized(`${root}/include/vortek_serializer.h`));
+if(clientSerializer!==hostSerializer)
   throw Error('Client/server serializers differ; do not combine protocols');
+fs.writeFileSync(`${root}/include/vortek_serializer.h`,clientSerializer);
 if(hash(normalized(`${server}/vulkan/vulkan_core.h`))!=='c274cdac1e77755ad2c9e12a1d4d24a91e1f72dad138bfcd8b4a54279b9c2e71')
   throw Error('Unexpected paired Vulkan headers');
 for(const directory of ['vulkan','vk_video']) fs.cpSync(`${server}/${directory}`,`${root}/include/${directory}`,{recursive:true});
@@ -48,7 +52,12 @@ if(!fs.existsSync(xcb)||hash(fs.readFileSync(xcb))!==xcbHash){
 let header=fs.readFileSync(`${root}/include/vortek.h`,'utf8');
 header=header.replace('#ifdef __ANDROID__\n#define VT_SERVER 1','#if defined(__ANDROID__) && !defined(DIMENSITY_VORTEK_CLIENT)\n#define VT_SERVER 1')
   .replace('#ifdef __ANDROID__\r\n#define VT_SERVER 1','#if defined(__ANDROID__) && !defined(DIMENSITY_VORTEK_CLIENT)\r\n#define VT_SERVER 1');
+const mappingStruct='    void* data;\n    int allocationSize;\n    int size;';
+const normalizedHeader=header.replaceAll('\r\n','\n');
+if(!normalizedHeader.includes(mappingStruct))throw Error('Unexpected MappedMemory ABI');
+header=normalizedHeader.replace(mappingStruct,'    void* data;\n    void* mappingBase;\n    VkDeviceSize allocationSize;\n    size_t mappedLength;');
 fs.writeFileSync(`${root}/include/vortek.h`,header);
+fs.copyFileSync('scripts/vortek-client/dimensity_mapping.h',`${root}/include/dimensity_mapping.h`);
 let main=fs.readFileSync(`${root}/src/main.c`,'utf8');
 const pathLine='    strncpy(server_addr.sun_path, VORTEK_SERVER_PATH, sizeof(server_addr.sun_path) - 1);';
 const replacement=`    const char *path = getenv("VORTEK_SERVER_PATH");
@@ -198,6 +207,11 @@ if(!calls.includes(entry))throw Error('Unexpected Vortek function table');
 calls=calls.replace(entry,`    {"vkCreateXcbSurfaceKHR", vt_call_vkCreateXcbSurfaceKHR},
     {"vkGetPhysicalDeviceXcbPresentationSupportKHR", vt_call_vkGetPhysicalDeviceXcbPresentationSupportKHR},
 `+entry);
+const pipelineStart=calls.indexOf('static VkResult waitForPipelineCreation(');
+const pipelineEnd=calls.indexOf('\nVkResult vt_call_vkCreateInstance(',pipelineStart);
+if(pipelineStart<0||pipelineEnd<pipelineStart)throw Error('Unexpected pipeline wait implementation');
+calls=calls.slice(0,pipelineStart)+fs.readFileSync('scripts/vortek-client/pipeline-reply.inc','utf8').replaceAll('\r\n','\n')+calls.slice(pipelineEnd);
+calls=patchMapMemory(calls);
 fs.writeFileSync(`${root}/src/vulkan_calls.c`,calls);
 // Only opaque Xlib ABI names used by Vulkan surface declarations; no Xlib calls.
 fs.mkdirSync(`${root}/dimensity-abi/X11`,{recursive:true});
@@ -223,9 +237,11 @@ fs.writeFileSync(`${out}/source-lock.json`,JSON.stringify({
   archiveSha256:expected,pairedWinlatorAppCommit:'a030f552f452158a2db64fdb32b490fa19c0b48d',
   changes:['Explicit Android guest-client build role','Session-owned socket from environment; no other app path',
     'Xlib/XCB surface window-id bridge; opaque ABI declarations without Xlib/XCB functions',
-    'Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged'],
-  preparedSha256:{header:hash(header),main:hash(main),calls:hash(calls)},
-  protocol:'Dimensity reply v3 (WSI v2, reset-fence ack, native fence-status polling); use paired server',
+    'Paired submit/present acknowledgements and explicit acquire image-index reply; request byte layouts unchanged',
+    '64-bit memory mapping, checked page-aligned fd ranges, placed-map reservation and fd/mapping cleanup',
+    'Exact streaming pipeline replies; null native pipeline handles remain null'],
+  preparedSha256:{header:hash(header),main:hash(main),calls:hash(calls),serializer:hash(clientSerializer),mapping:hash(fs.readFileSync('scripts/vortek-client/dimensity_mapping.h'))},
+  protocol:'Dimensity reply v4 (v3 plus element-wise heaps/full memory budgets); use paired server',
   status:'optional per-game backend; offline build only, not validated on device'
 },null,2));
 console.log('Prepared pinned Android Vortek client; existing renderer unchanged.');

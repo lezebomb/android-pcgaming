@@ -288,6 +288,14 @@ tvMessage.setText(android.text.Html.fromHtml(message, android.text.Html.FROM_HTM
     }
 
     public static void setEnvVars(Context context, KeyValueSet config, EnvVars envVars) {
+        if (com.winlator.cmod.core.DxvkSarek.VERSION.equals(config.get("version"))) {
+            // Use complete synchronous pipelines for the initial rendering
+            // comparison; user-supplied environment can still override later.
+            if (envVars.get("DXVK_SHADER_COMPILATION_METHOD").isEmpty())
+                envVars.put("DXVK_SHADER_COMPILATION_METHOD", "none");
+            if (envVars.get("DXVK_FRAME_RATE_PACING").isEmpty())
+                envVars.put("DXVK_FRAME_RATE_PACING", "sliced");
+        }
         boolean dxvkConfigEnabled = "1".equals(config.get("dxvkConfig", "1"));
         File configFile = new File(context.getFilesDir(), "imagefs/home/xuser/.config/dxvk.conf");
 

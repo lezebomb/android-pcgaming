@@ -75,3 +75,23 @@ APK631681386bytes，SHA2562edfdef6071d8203fcc7fc49bbabe8eaa19ed80037ea20a83dba7a
 ### 0.1.34实机Fence修复
 
 APK631678438bytes，SHA256941d3b8de3761810967a7bac2619743b65707c7775d3ae929ee9db6431ead2e2；构建/v2/安装通过。相同Warzone Vortek会话已越过黑屏，日志stageTwoInitialise/gameLoad CAM_1A/Entering main loop；实际截图有地形、车辆、HUD、手柄选7单位。摇杆已移动鼠标，A/B尝试未证明单位位移，helper达到时限退出，不冒称移动/战斗/稳定性通过。未重复旧色块或全套XInput。
+
+### 0.1.35显存传输实机修复
+
+产品serializer头直接NDK编译在本app UID执行：memory_wire_result=0 native_heap_size=16；覆盖二堆数据/flags、预算最后项及260字节线长。APK631679338bytes，SHA256070574d84cf1a870fbd7040c199e5b94fbbb044bbfaff114ddee0c210aa7643e，构建/v2/安装通过。对应一次Superposition legacy1.10.3 launcher复查中Heap[1].flags从随机值修正为0x1，但仍0xc0000005，未到benchmark场景。
+
+### 离线0.1.36共享内存修正
+
+单次产品range helper短查vortek_mapping_result=0，覆盖3GiB、4K/16K页、非零offset的WHOLE_SIZE及越界；ARM64两端和APK构建、v2验签通过。APK631680282bytes，SHA256fd2fe875a53e1655319e5e1deaa5f93a47e6757dce6be466bff797c496a2a13c。按用户要求本轮离线，没有安装或运行游戏，已安装仍0.1.35。
+
+### 离线0.1.37着色器与管线
+
+一次host检查直接编译产品shader_inspector.c与arrays实现，以记录型Vulkan模块接口验证同一shader两种顶点格式的独立转换、原始code不变、编译失败返回及边界；vortek_shader_result=0，不包含GPU渲染。ARM64两端、APK构建与v2通过。APK631682418bytes，SHA2568e1de1aea7a151499310108f9808b6e513106ec417f7e91d67422b780a08edb3。未安装/未游戏复查。
+
+### 离线0.1.38原生映射
+
+APK构建及v2通过，631682630bytes，SHA2560fd5ae2ed82066c4ad958a61f5676dbecefe927c9c36da541835f5bfa35c57a2。只补原生映射调用有效性，没有实机缓存一致性或画面结论。
+
+### 离线0.1.39可选Sarek
+
+固定作者发布包SHA256核对通过；一次host短查直接运行产品DxvkSarek.java（仅Android资产入口使用stub，tar库与产品相同）：sarek_install_result=0，Win64十DLL/Win32五DLL、没有解出源码目录。APK构建/v2通过，642834879bytes，SHA2566beee625f4fc532c743229b18c9231a8a62a4995de95a91921da4c6553a204a6。首次编译发现OnExtractFileListener并非嵌套类型，已改为产品接口并重新构建成功。未安装，已安装仍0.1.35；没有重复游戏/输入/旧探针。

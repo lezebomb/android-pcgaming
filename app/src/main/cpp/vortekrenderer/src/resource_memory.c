@@ -1,208 +1,169 @@
 #include "resource_memory.h"
-#include "sysvshared_memory.h"
 #include "vulkan_helper.h"
 #include "dma_utils.h"
 #include "native_handle.h"
 
 extern const native_handle_t* AHardwareBuffer_getNativeHandle(const AHardwareBuffer* buffer);
+extern DeviceMemoryInfo deviceMemoryInfo;
 
-// The native handle owns its fd. ResourceMemory_free closes our duplicate,
-// then releases the AHB; closing the borrowed fd would corrupt its ownership.
+// The AHB owns this fd; keep our own reference for the guest's mmap.
 static int duplicateHardwareBufferFd(AHardwareBuffer* buffer) {
     const native_handle_t* handle = AHardwareBuffer_getNativeHandle(buffer);
     return handle && handle->numFds > 0 ? fcntl(handle->data[0], F_DUPFD_CLOEXEC, 0) : -1;
 }
-extern DeviceMemoryInfo deviceMemoryInfo;
 
-static ResourceMemory* internalAllocate() {
-    ResourceMemory* resourceMemory = calloc(1, sizeof(ResourceMemory));
-    resourceMemory->buffer = VK_NULL_HANDLE;
-    resourceMemory->memory = VK_NULL_HANDLE;
-    resourceMemory->fd = -1;
-    return resourceMemory;
+static bool fitsAllocationBudget(const VkContext* context, VkDeviceSize size) {
+    uint64_t limit = (uint64_t)context->maxDeviceMemory << 20;
+    if (!limit) limit = deviceMemoryInfo.maxAllocationSize;
+    return size && context->totalAllocationSize <= limit && size <= limit - context->totalAllocationSize;
 }
 
-static AHardwareBuffer* allocateHardwareBuffer(VkDeviceSize size) {
-    if (size == 0 || size > UINT32_MAX) return NULL;
-    AHardwareBuffer_Desc buffDesc = {0};
-    buffDesc.width = size;
-    buffDesc.height = 1;
-    buffDesc.layers = 1;
-    buffDesc.usage = AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN;
-    buffDesc.format = AHARDWAREBUFFER_FORMAT_BLOB;
-
-    AHardwareBuffer* hardwareBuffer = NULL;
-    AHardwareBuffer_allocate(&buffDesc, &hardwareBuffer);
-
-    return hardwareBuffer;
-}
-
-ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, VkMemoryAllocateInfo* memoryInfo) {
-    uint64_t maxAllocationSize = (VkDeviceSize)context->maxDeviceMemory << 20;
-    if (maxAllocationSize == 0) maxAllocationSize = deviceMemoryInfo.maxAllocationSize;
-    if (context->totalAllocationSize > maxAllocationSize ||
-        memoryInfo->allocationSize > maxAllocationSize - context->totalAllocationSize) return NULL;
-
-    VkResult result;
-    ResourceMemory* resourceMemory = internalAllocate();
-    if (isHostVisibleMemory(memoryInfo->memoryTypeIndex)) {
-        bool hasExternalMemoryFd = context->hasExternalMemoryFd;
-        bool hasExternalMemoryDMABuf = context->hasExternalMemoryDMABuf;
-
-        switch (context->resourceMemoryType) {
-            case RESOURCE_MEMORY_TYPE_OPAQUE_FD:
-                hasExternalMemoryFd = true;
-                hasExternalMemoryDMABuf = false;
-                break;
-            case RESOURCE_MEMORY_TYPE_DMA_BUF:
-                hasExternalMemoryFd = false;
-                hasExternalMemoryDMABuf = true;
-                break;
-            case RESOURCE_MEMORY_TYPE_AHARDWAREBUFFER:
-                hasExternalMemoryFd = false;
-                hasExternalMemoryDMABuf = false;
-                break;
-        }
-
-        if (hasExternalMemoryFd) {
-            VkExternalMemoryBufferCreateInfo externalMemoryBufferInfo = {0};
-            externalMemoryBufferInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO;
-            externalMemoryBufferInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-
-            VkBufferCreateInfo bufferInfo = {0};
-            bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-            bufferInfo.pNext = &externalMemoryBufferInfo;
-            bufferInfo.size = memoryInfo->allocationSize;
-            bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
-                               VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                               VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT |
-                               VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT |
-                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT |
-                               VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                               VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                               VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                               VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-            bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-            result = vulkanWrapper.vkCreateBuffer(device, &bufferInfo, NULL, &resourceMemory->buffer);
-            if (result != VK_SUCCESS) goto error;
-
-            VkMemoryRequirements memReqs = {0};
-            vulkanWrapper.vkGetBufferMemoryRequirements(device, resourceMemory->buffer, &memReqs);
-
-            VkExportMemoryAllocateInfo exportMemoryInfo = {0};
-            exportMemoryInfo.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
-            exportMemoryInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-
-            VkMemoryDedicatedAllocateInfo memoryDedicatedInfo = {0};
-            memoryDedicatedInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
-            memoryDedicatedInfo.pNext = &exportMemoryInfo;
-            memoryDedicatedInfo.image = VK_NULL_HANDLE;
-            memoryDedicatedInfo.buffer = resourceMemory->buffer;
-
-            memoryInfo->pNext = &memoryDedicatedInfo;
-            memoryInfo->allocationSize = memReqs.size;
-            result = vulkanWrapper.vkAllocateMemory(device, memoryInfo, NULL, &resourceMemory->memory);
-            if (result != VK_SUCCESS) goto error;
-
-            VkMemoryGetFdInfoKHR getFdInfo = {0};
-            getFdInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-            getFdInfo.memory = resourceMemory->memory;
-            getFdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
-
-            int fd = -1;
-            result = vulkanWrapper.vkGetMemoryFd(device, &getFdInfo, &fd);
-            if (result != VK_SUCCESS || fd <= 0) goto error;
-            resourceMemory->fd = fd;
-        }
-        else {
-            if ((getMemoryPropertyFlags(memoryInfo->memoryTypeIndex) & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)) {
-                memoryInfo->memoryTypeIndex = getMemoryTypeIndex(0x7FFFFFFF, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-                if (memoryInfo->memoryTypeIndex == UINT32_MAX) goto error;
-            }
-
-            bool useExternalMemoryAHB = !hasExternalMemoryDMABuf;
-            if (hasExternalMemoryDMABuf) {
-                int fd = dmabuf_alloc(memoryInfo->allocationSize);
-                if (fd > 0) {
-                    int dupFd = dup(fd);
-                    VkImportMemoryFdInfoKHR memoryImportInfo = {0};
-                    memoryImportInfo.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
-                    memoryImportInfo.fd = dupFd;
-                    memoryImportInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-
-                    memoryInfo->pNext = &memoryImportInfo;
-                    result = vulkanWrapper.vkAllocateMemory(device, memoryInfo, NULL, &resourceMemory->memory);
-                    if (result == VK_SUCCESS) {
-                        resourceMemory->fd = fd;
-                    }
-                    else {
-                        CLOSEFD(fd);
-                        CLOSEFD(dupFd);
-                        useExternalMemoryAHB = true;
-                    }
-                }
-                else useExternalMemoryAHB = true;
-            }
-
-            if (useExternalMemoryAHB) {
-                AHardwareBuffer* hardwareBuffer = allocateHardwareBuffer(memoryInfo->allocationSize);
-                if (!hardwareBuffer) goto error;
-                resourceMemory->hardwareBuffer = hardwareBuffer;
-
-                int fd = duplicateHardwareBufferFd(hardwareBuffer);
-                if (fd < 0) goto error;
-                resourceMemory->fd = fd;
-
-                VkImportAndroidHardwareBufferInfoANDROID memoryImportInfo = {0};
-                memoryImportInfo.sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID;
-                memoryImportInfo.buffer = hardwareBuffer;
-
-                memoryInfo->pNext = &memoryImportInfo;
-                result = vulkanWrapper.vkAllocateMemory(device, memoryInfo, NULL, &resourceMemory->memory);
-                if (result != VK_SUCCESS) goto error;
-                resourceMemory->fd = fd;
-            }
-        }
+static VkResult allocateNative(VkContext* context, VkDevice device, const VkMemoryAllocateInfo* info, ResourceMemory* resource) {
+    // Check the final native size, which may include AHB allocator padding.
+    if (!fitsAllocationBudget(context, info->allocationSize)) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+    VkResult result = vulkanWrapper.vkAllocateMemory(device, info, NULL, &resource->memory);
+    if (result == VK_SUCCESS) {
+        resource->allocationSize = info->allocationSize;
+        context->totalAllocationSize += resource->allocationSize;
     }
+    return result;
+}
+
+static VkResult allocateOpaqueFd(VkContext* context, VkDevice device, const VkMemoryAllocateInfo* original, ResourceMemory* resource) {
+    if (!vulkanWrapper.vkGetMemoryFd) return VK_ERROR_FEATURE_NOT_PRESENT;
+    VkExportMemoryAllocateInfo exportInfo = {0};
+    exportInfo.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+    exportInfo.pNext = original->pNext;
+    exportInfo.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+    VkMemoryAllocateInfo info = *original;
+    info.pNext = &exportInfo;
+    // Keep the real resource's dedicated allocation and device-address flags.
+    // Dedicating this memory to a dummy buffer forbids later game bindings.
+    VkResult result = allocateNative(context, device, &info, resource);
+    if (result != VK_SUCCESS) return result;
+    VkMemoryGetFdInfoKHR fdInfo = {0};
+    fdInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
+    fdInfo.memory = resource->memory;
+    fdInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
+    result = vulkanWrapper.vkGetMemoryFd(device, &fdInfo, &resource->fd);
+    return result == VK_SUCCESS && resource->fd < 0 ? VK_ERROR_INVALID_EXTERNAL_HANDLE : result;
+}
+
+static VkResult allocateDmaBuf(VkContext* context, VkDevice device, const VkMemoryAllocateInfo* original, ResourceMemory* resource) {
+    if (!vulkanWrapper.vkGetMemoryFdProperties) return VK_ERROR_FEATURE_NOT_PRESENT;
+    int fd = dmabuf_alloc(original->allocationSize);
+    if (fd < 0) return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+    VkMemoryFdPropertiesKHR properties = {0};
+    properties.sType = VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR;
+    VkResult result = vulkanWrapper.vkGetMemoryFdProperties(device, VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT, fd, &properties);
+    if (result == VK_SUCCESS && !(properties.memoryTypeBits & (1u << original->memoryTypeIndex)))
+        result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+    int importFd = result == VK_SUCCESS ? fcntl(fd, F_DUPFD_CLOEXEC, 0) : -1;
+    if (result == VK_SUCCESS && importFd < 0) result = VK_ERROR_OUT_OF_HOST_MEMORY;
+    if (result == VK_SUCCESS) {
+        VkImportMemoryFdInfoKHR importInfo = {0};
+        importInfo.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR;
+        importInfo.pNext = original->pNext;
+        importInfo.fd = importFd;
+        importInfo.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+        VkMemoryAllocateInfo info = *original;
+        info.pNext = &importInfo;
+        result = allocateNative(context, device, &info, resource);
+    }
+    if (result == VK_SUCCESS) resource->fd = fd; // Vulkan consumed importFd.
     else {
-        result = vulkanWrapper.vkAllocateMemory(device, memoryInfo, NULL, &resourceMemory->memory);
-        if (result != VK_SUCCESS) goto error;
+        if (importFd >= 0) close(importFd); // Failed imports do not consume it.
+        close(fd);
     }
+    return result;
+}
 
-    if (result == VK_SUCCESS) context->totalAllocationSize += memoryInfo->allocationSize;
-    resourceMemory->allocationSize = memoryInfo->allocationSize;
-    return resourceMemory;
+static VkResult allocateHardwareBuffer(VkContext* context, VkDevice device, const VkMemoryAllocateInfo* original, ResourceMemory* resource) {
+    if (original->allocationSize > UINT32_MAX) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+    if (!vulkanWrapper.vkGetAndroidHardwareBufferPropertiesANDROID) return VK_ERROR_FEATURE_NOT_PRESENT;
+    const VkMemoryDedicatedAllocateInfo* dedicated = findNextVkStructure(original->pNext, VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO);
+    // A BLOB cannot satisfy the dimensions/format of a dedicated image import.
+    if (dedicated && dedicated->image) return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+    AHardwareBuffer_Desc desc = {0};
+    desc.width = original->allocationSize;
+    desc.height = desc.layers = 1;
+    desc.usage = AHARDWAREBUFFER_USAGE_GPU_DATA_BUFFER |
+            AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN | AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN;
+    desc.format = AHARDWAREBUFFER_FORMAT_BLOB;
+    if (AHardwareBuffer_allocate(&desc, &resource->hardwareBuffer) != 0 || !resource->hardwareBuffer)
+        return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+    VkAndroidHardwareBufferPropertiesANDROID properties = {0};
+    properties.sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
+    VkResult result = vulkanWrapper.vkGetAndroidHardwareBufferPropertiesANDROID(device, resource->hardwareBuffer, &properties);
+    if (result != VK_SUCCESS) return result;
+    // Never silently choose a different native memory type: the game selected
+    // this index from its resource requirements and may rely on all its flags.
+    if (!(properties.memoryTypeBits & (1u << original->memoryTypeIndex)) ||
+            properties.allocationSize < original->allocationSize) return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+    resource->fd = duplicateHardwareBufferFd(resource->hardwareBuffer);
+    if (resource->fd < 0) return VK_ERROR_INVALID_EXTERNAL_HANDLE;
+    VkImportAndroidHardwareBufferInfoANDROID importInfo = {0};
+    importInfo.sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID;
+    importInfo.pNext = original->pNext;
+    importInfo.buffer = resource->hardwareBuffer;
+    VkMemoryAllocateInfo info = *original;
+    info.pNext = &importInfo;
+    info.allocationSize = properties.allocationSize;
+    return allocateNative(context, device, &info, resource);
+}
 
-error:
-    ResourceMemory_free(context, device, resourceMemory);
+ResourceMemory* ResourceMemory_allocate(VkContext* context, VkDevice device, const VkMemoryAllocateInfo* info, VkResult* outResult) {
+    VkResult result = VK_ERROR_OUT_OF_DEVICE_MEMORY;
+    if (!info || info->memoryTypeIndex >= deviceMemoryInfo.memoryTypeCount || info->memoryTypeIndex >= 32 ||
+            !fitsAllocationBudget(context, info->allocationSize)) goto failed;
+    ResourceMemory* resource = calloc(1, sizeof(*resource));
+    if (!resource) { result = VK_ERROR_OUT_OF_HOST_MEMORY; goto failed; }
+    resource->fd = -1;
+    resource->device = device;
+    if (!isHostVisibleMemory(info->memoryTypeIndex)) result = allocateNative(context, device, info, resource);
+    else {
+        bool opaque = context->hasExternalMemoryFd;
+        bool dma = context->hasExternalMemoryDMABuf;
+        switch (context->resourceMemoryType) {
+            case RESOURCE_MEMORY_TYPE_OPAQUE_FD: opaque = true; dma = false; break;
+            case RESOURCE_MEMORY_TYPE_DMA_BUF: opaque = false; dma = true; break;
+            case RESOURCE_MEMORY_TYPE_AHARDWAREBUFFER: opaque = dma = false; break;
+            default: break;
+        }
+        if (opaque) result = allocateOpaqueFd(context, device, info, resource);
+        else {
+            result = dma ? allocateDmaBuf(context, device, info, resource) : VK_ERROR_FEATURE_NOT_PRESENT;
+            if (result != VK_SUCCESS) result = allocateHardwareBuffer(context, device, info, resource);
+        }
+    }
+    if (result == VK_SUCCESS) { *outResult = result; return resource; }
+    ResourceMemory_free(context, device, resource);
+failed:
+    *outResult = result;
     return NULL;
 }
 
-void ResourceMemory_free(VkContext* context, VkDevice device, ResourceMemory* resourceMemory) {
-    if (!resourceMemory) return;
+// A guest fd mmap alone does not make this VkDeviceMemory host-mapped in
+// the system driver. Keep one full native mapping so forwarded flush/invalidate
+// ranges refer to a valid mapped allocation; guest unmaps stay local to Wine.
+VkResult ResourceMemory_map(ResourceMemory* resource) {
+    if (!resource || !resource->memory || resource->fd < 0) return VK_ERROR_MEMORY_MAP_FAILED;
+    if (resource->hostMapped) return VK_SUCCESS;
+    void* data = NULL;
+    VkResult result = vulkanWrapper.vkMapMemory(resource->device, resource->memory, 0, VK_WHOLE_SIZE, 0, &data);
+    if (result == VK_SUCCESS) resource->hostMapped = true;
+    return result;
+}
 
-    if (resourceMemory->buffer) {
-        vulkanWrapper.vkDestroyBuffer(device, resourceMemory->buffer, NULL);
-        resourceMemory->buffer = VK_NULL_HANDLE;
-    }
-
-    if (resourceMemory->fd >= 0) close(resourceMemory->fd);
-    resourceMemory->fd = -1;
-    if (resourceMemory->memory) {
-        vulkanWrapper.vkFreeMemory(device, resourceMemory->memory, NULL);
-        resourceMemory->memory = VK_NULL_HANDLE;
-
-        uint64_t totalAllocationSize = context->totalAllocationSize;
-        totalAllocationSize = totalAllocationSize > resourceMemory->allocationSize ? (totalAllocationSize - resourceMemory->allocationSize) : 0;
-        context->totalAllocationSize = totalAllocationSize;
-    }
-
-    if (resourceMemory->hardwareBuffer) {
-        AHardwareBuffer_release(resourceMemory->hardwareBuffer);
-        resourceMemory->hardwareBuffer = NULL;
-    }
-
-    resourceMemory->allocationSize = 0;
-    MEMFREE(resourceMemory);
+void ResourceMemory_free(VkContext* context, VkDevice device, ResourceMemory* resource) {
+    if (!resource) return;
+    if (resource->fd >= 0) close(resource->fd);
+    if (resource->hostMapped) vulkanWrapper.vkUnmapMemory(device, resource->memory);
+    if (resource->memory) vulkanWrapper.vkFreeMemory(device, resource->memory, NULL);
+    // Only successful allocations were charged, including failed fd exports
+    // that happen after native allocation. Error cleanup balances that charge.
+    uint64_t total = context->totalAllocationSize;
+    context->totalAllocationSize = total >= resource->allocationSize ? total - resource->allocationSize : 0;
+    if (resource->hardwareBuffer) AHardwareBuffer_release(resource->hardwareBuffer);
+    free(resource);
 }

@@ -6307,7 +6307,8 @@ static inline void vt_serialize_VkPhysicalDeviceMemoryProperties(VkPhysicalDevic
     bufferOffset += val->memoryTypeCount * vt_sizeof_VkMemoryType(&val->memoryTypes[0]);
     *(uint32_t*)(outputBuffer + bufferOffset) = val->memoryHeapCount;
     bufferOffset += 4;
-    if (val->memoryHeapCount <= VK_MAX_MEMORY_HEAPS) memcpy(outputBuffer + bufferOffset, val->memoryHeaps, val->memoryHeapCount * vt_sizeof_VkMemoryHeap(&val->memoryHeaps[0]));
+    for (uint32_t i = 0; i < val->memoryHeapCount && i < VK_MAX_MEMORY_HEAPS; i++)
+        vt_serialize_VkMemoryHeap(&val->memoryHeaps[i], outputBuffer + bufferOffset + i * vt_sizeof_VkMemoryHeap(&val->memoryHeaps[0]));
     bufferOffset += val->memoryHeapCount * vt_sizeof_VkMemoryHeap(&val->memoryHeaps[0]);
 }
 
@@ -6319,15 +6320,16 @@ static inline void vt_unserialize_VkPhysicalDeviceMemoryProperties(VkPhysicalDev
     bufferOffset += val->memoryTypeCount * vt_sizeof_VkMemoryType(&val->memoryTypes[0]);
     val->memoryHeapCount = *(uint32_t*)(inputBuffer + bufferOffset);
     bufferOffset += 4;
-    if (val->memoryHeapCount <= VK_MAX_MEMORY_HEAPS) memcpy(val->memoryHeaps, inputBuffer + bufferOffset, val->memoryHeapCount * vt_sizeof_VkMemoryHeap(&val->memoryHeaps[0]));
+    for (uint32_t i = 0; i < val->memoryHeapCount && i < VK_MAX_MEMORY_HEAPS; i++)
+        vt_unserialize_VkMemoryHeap(&val->memoryHeaps[i], inputBuffer + bufferOffset + i * vt_sizeof_VkMemoryHeap(&val->memoryHeaps[0]), memoryPool);
     bufferOffset += val->memoryHeapCount * vt_sizeof_VkMemoryHeap(&val->memoryHeaps[0]);
 }
 
 static inline int vt_sizeof_VkPhysicalDeviceMemoryBudgetPropertiesEXT(VkPhysicalDeviceMemoryBudgetPropertiesEXT* val) {
     int bufferSize = 0;
     bufferSize += 4; // sType
-    bufferSize += VK_MAX_MEMORY_HEAPS;
-    bufferSize += VK_MAX_MEMORY_HEAPS;
+    bufferSize += (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize));
+    bufferSize += (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize));
     return bufferSize;
 }
 
@@ -6335,10 +6337,10 @@ static inline void vt_serialize_VkPhysicalDeviceMemoryBudgetPropertiesEXT(VkPhys
     int bufferOffset = 0;
     *(VkStructureType*)(outputBuffer + bufferOffset) = val->sType;
     bufferOffset += 4;
-    memcpy(outputBuffer + bufferOffset, val->heapBudget, VK_MAX_MEMORY_HEAPS);
-    bufferOffset += VK_MAX_MEMORY_HEAPS;
-    memcpy(outputBuffer + bufferOffset, val->heapUsage, VK_MAX_MEMORY_HEAPS);
-    bufferOffset += VK_MAX_MEMORY_HEAPS;
+    memcpy(outputBuffer + bufferOffset, val->heapBudget, (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize)));
+    bufferOffset += (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize));
+    memcpy(outputBuffer + bufferOffset, val->heapUsage, (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize)));
+    bufferOffset += (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize));
 }
 
 static inline void vt_unserialize_VkPhysicalDeviceMemoryBudgetPropertiesEXT(VkPhysicalDeviceMemoryBudgetPropertiesEXT* val, char* inputBuffer, MemoryPool* memoryPool) {
@@ -6348,10 +6350,10 @@ static inline void vt_unserialize_VkPhysicalDeviceMemoryBudgetPropertiesEXT(VkPh
 #ifdef VT_SERVER
     val->pNext = NULL;
 #endif
-    memcpy(val->heapBudget, inputBuffer + bufferOffset, VK_MAX_MEMORY_HEAPS);
-    bufferOffset += VK_MAX_MEMORY_HEAPS;
-    memcpy(val->heapUsage, inputBuffer + bufferOffset, VK_MAX_MEMORY_HEAPS);
-    bufferOffset += VK_MAX_MEMORY_HEAPS;
+    memcpy(val->heapBudget, inputBuffer + bufferOffset, (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize)));
+    bufferOffset += (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize));
+    memcpy(val->heapUsage, inputBuffer + bufferOffset, (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize)));
+    bufferOffset += (VK_MAX_MEMORY_HEAPS * sizeof(VkDeviceSize));
 }
 
 static inline int vt_sizeof_VkQueueFamilyProperties(VkQueueFamilyProperties* val) {

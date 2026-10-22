@@ -67,7 +67,7 @@ public final class DirectLaunchDialog {
                 .equals(shortcut.getExtra(com.winlator.cmod.dimensity.AdapterIdentity.EXTRA)));
         fields.addView(adapterIdentity);
         CheckBox vortek = new CheckBox(context);
-        vortek.setText("实验性 Mali 显示后端（Vortek，尚未实机验证）");
+        vortek.setText("实验性 Mali 显示后端（Vortek）");
         vortek.setChecked(com.winlator.cmod.core.VortekBackend.selected(shortcut));
         fields.addView(vortek);
         CheckBox automatic = new CheckBox(context);

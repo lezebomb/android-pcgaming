@@ -1360,7 +1360,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     //         Log.d("XServerDisplayActivity", "Failed to extract input dlls");
     // }
 
-    private void setupWineSystemFiles() {
+    private void setupWineSystemFiles() throws IOException {
         String appVersion = String.valueOf(AppUtils.getVersionCode(this));
         String imgVersion = String.valueOf(imageFs.getVersion());
         boolean containerDataChanged = false;
@@ -2281,7 +2281,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         if (dxwrapper.contains("dxvk")) {
             DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
             String version = dxwrapperConfig.get("version");
-            if (version.equals("1.11.1-sarek")) {
+            if (version.endsWith("-sarek")) {
                 Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
                 envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
             }
@@ -2373,7 +2373,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         String gpuName = graphicsDriverConfig.get("gpuName");
         String dxvkVersion = dxwrapperConfig.get("version");
-        if (!gpuName.equals("Device") && !dxvkVersion.equals("1.11.1-sarek")) {
+        if (!gpuName.equals("Device") && !dxvkVersion.endsWith("-sarek")) {
             envVars.put("WRAPPER_DEVICE_NAME", gpuName);
             envVars.put("WRAPPER_DEVICE_ID", WineD3DConfigDialog.getDeviceIdFromGPUName(this, gpuName));
             envVars.put("WRAPPER_VENDOR_ID", WineD3DConfigDialog.getVendorIdFromGPUName(this, gpuName));
@@ -2500,7 +2500,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     private static final String TAG = "DXWrapperExtraction";
 
-    private void extractDXWrapperFiles(String dxwrapper) {
+    private void extractDXWrapperFiles(String dxwrapper) throws IOException {
         final String[] dlls = {"d3d10.dll", "d3d10_1.dll", "d3d10core.dll", "d3d11.dll", "d3d12.dll", "d3d12core.dll", "d3d8.dll", "d3d9.dll", "dxgi.dll", "ddraw.dll", "d3dimm.dll"};
 
         File rootDir = imageFs.getRootDir();
@@ -2517,6 +2517,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             if (dxvkProfile != null) {
                 Log.d(TAG, "Applying user-defined DXVK content profile: " + dxvkWrapper);
                 contentsManager.applyContent(dxvkProfile);
+            } else if (dxvkWrapper.equals("dxvk-" + com.winlator.cmod.core.DxvkSarek.VERSION)) {
+                com.winlator.cmod.core.DxvkSarek.install(this, windowsDir, onExtractFileListener);
+                restoreOriginalDllFiles(new String[]{"d3d10.dll", "d3d10_1.dll"});
             } else {
                 Log.d(TAG, "Extracting fallback DXVK .tzst archive: " + dxvkWrapper);
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + dxvkWrapper + ".tzst", windowsDir, onExtractFileListener);

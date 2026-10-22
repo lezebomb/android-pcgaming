@@ -309,8 +309,8 @@ void vt_handle_vkAllocateMemory(VkContext* context) {
     vt_unserialize_vkAllocateMemory((VkDevice)&deviceId, &allocateInfo, NULL, NULL, context->inputBuffer, &context->memoryPool);
     VkDevice device = VkObject_fromId(deviceId);
 
-    ResourceMemory* resourceMemory = ResourceMemory_allocate(context, device, &allocateInfo);
-    VkResult result = resourceMemory ? VK_SUCCESS : VK_ERROR_OUT_OF_DEVICE_MEMORY;
+    VkResult result;
+    ResourceMemory* resourceMemory = ResourceMemory_allocate(context, device, &allocateInfo, &result);
 
     if (result == VK_SUCCESS) {
         VT_SERIALIZE_CMD(VkDeviceMemory, (VkDeviceMemory)resourceMemory);
@@ -336,8 +336,9 @@ void vt_handle_vkMapMemory(VkContext* context) {
     vt_unserialize_VkDeviceMemory((VkDeviceMemory)&memoryId, context->inputBuffer, &context->memoryPool);
     ResourceMemory* resourceMemory = VkObject_fromId(memoryId);
 
-    VkResult result = resourceMemory->fd != -1 ? VK_SUCCESS : VK_ERROR_MEMORY_MAP_FAILED;
-    send_fds(context->clientFd, &resourceMemory->fd, 1, &result, sizeof(VkResult));
+    VkResult result = ResourceMemory_map(resourceMemory);
+    if (result == VK_SUCCESS) send_fds(context->clientFd, &resourceMemory->fd, 1, &result, sizeof(result));
+    else send(context->clientFd, &result, sizeof(result), MSG_NOSIGNAL);
 }
 
 void vt_handle_vkUnmapMemory(VkContext* context) {
